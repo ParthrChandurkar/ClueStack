@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}">
+    <meta property="og:title" content="{{title}}">
+    <meta property="og:description" content="{{description}}">
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#08111f">
+    <link rel="icon" href="assets/brand-mark.png" type="image/png">
+    <link rel="stylesheet" href="assets/styles.css">
+    <script defer src="assets/site.js"></script>
+  </head>
+  <body class="{{bodyClass}}" data-active="{{active}}">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container nav-shell">
+        <a class="brand" href="index.html" aria-label="InfraWatch home">
+          <img src="assets/brand-lockup.png" alt="InfraWatch" width="228" height="60">
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
+          <span>Menu</span>
+        </button>
+        <nav id="site-navigation" class="site-nav" aria-label="Main navigation">
+          {{nav}}
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      {{content}}
+    </main>
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div>
+          <img src="assets/brand-mark.png" alt="" width="56" height="56">
+          <p>InfraWatch is a local-first Kubernetes deployment and observability project for developers, students, and early SRE learners.</p>
+        </div>
+        <div>
+          <h2>Project</h2>
+          <a href="https://github.com/ParthrChandurkar/InfraWatch">GitHub repository</a>
+          <a href="product.html">Product</a>
+          <a href="releases.html">Releases</a>
+          <a href="roadmap.html">Roadmap</a>
+        </div>
+        <div>
+          <h2>Docs</h2>
+          <a href="docs.html">Documentation</a>
+          <a href="docs-quick-start.html">Quick start</a>
+          <a href="technology-stack.html">Technology stack</a>
+          <a href="observability.html">Observability</a>
+          <a href="docs-troubleshooting.html">Troubleshooting</a>
+        </div>
+        <div>
+          <h2>Community</h2>
+          <a href="community.html">Contributing</a>
+          <a href="brand.html">Brand note</a>
+          <a href="https://github.com/ParthrChandurkar/InfraWatch/security">Security</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

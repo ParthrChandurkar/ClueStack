@@ -1,0 +1,12 @@
+{
+  "name": "infrawatch-dev-site",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static project website for InfraWatch.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check:links": "node scripts/check-links.mjs",
+    "validate": "npm run build && npm run check:links"
+  }
+}

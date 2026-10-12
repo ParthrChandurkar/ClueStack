@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" role="img" aria-labelledby="title desc">
+  <title id="title">InfraWatch infrastructure visibility illustration</title>
+  <desc id="desc">A geometric map of deployment workflow, local infrastructure, metrics, logs, alerts, and health signals around the InfraWatch symbol.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#0c1b31"/>
+      <stop offset="1" stop-color="#07111f"/>
+    </linearGradient>
+    <linearGradient id="line" x1="120" y1="300" x2="850" y2="300" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5eead4"/>
+      <stop offset=".48" stop-color="#45c4f0"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+    <radialGradient id="halo" cx=".5" cy=".48" r=".55">
+      <stop stop-color="#45c4f0" stop-opacity=".22"/>
+      <stop offset=".62" stop-color="#12385a" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#07111f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="980" height="620" rx="34" fill="url(#bg)"/>
+  <circle cx="490" cy="304" r="250" fill="url(#halo)"/>
+  <g fill="none" stroke="#213a54" stroke-width="1.4" opacity=".7">
+    <path d="M80 120h820M80 500h820M130 70v480M850 70v480"/>
+    <path d="M150 155h680M150 465h680"/>
+  </g>
+  <g fill="none" stroke="url(#line)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity=".95">
+    <path d="M188 310 C265 222 340 235 414 286"/>
+    <path d="M566 286 C640 235 715 222 792 310"/>
+    <path d="M188 310 C282 392 354 382 414 334"/>
+    <path d="M566 334 C626 382 700 392 792 310"/>
+  </g>
+  <g>
+    <rect x="92" y="258" width="170" height="104" rx="18" fill="#0d1726" stroke="#28445e"/>
+    <text x="122" y="296" fill="#eaf3ff" font-family="Inter, Segoe UI, Arial" font-size="18" font-weight="700">Deploy</text>
+    <text x="122" y="324" fill="#9fb2c8" font-family="Inter, Segoe UI, Arial" font-size="13">CLI + API workflow</text>
+    <path d="M122 342h90" stroke="#5eead4" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g>
+    <rect x="718" y="258" width="170" height="104" rx="18" fill="#0d1726" stroke="#28445e"/>
+    <text x="748" y="296" fill="#eaf3ff" font-family="Inter, Segoe UI, Arial" font-size="18" font-weight="700">Observe</text>
+    <text x="748" y="324" fill="#9fb2c8" font-family="Inter, Segoe UI, Arial" font-size="13">metrics logs alerts</text>
+    <path d="M748 342h36l12-22 18 34 11-12h32" fill="none" stroke="#45c4f0" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g>
+    <rect x="386" y="188" width="208" height="244" rx="30" fill="#08111f" stroke="#34516c" stroke-width="2"/>
+    <path d="M490 210 558 249v78l-68 40-68-40v-78l68-39Z" fill="#0b1628" stroke="#45c4f0" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M424 296h40l18-40 32 88 20-48h42" fill="none" stroke="#5eead4" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="422" cy="249" r="10" fill="#e7f6ff"/>
+    <circle cx="558" cy="249" r="10" fill="#e7f6ff"/>
+    <circle cx="490" cy="367" r="10" fill="#e7f6ff"/>
+    <text x="490" y="405" fill="#eaf3ff" font-family="Inter, Segoe UI, Arial" font-size="24" font-weight="760" text-anchor="middle">InfraWatch</text>
+  </g>
+  <g fill="#0d1726" stroke="#28445e">
+    <rect x="206" y="102" width="138" height="72" rx="16"/>
+    <rect x="636" y="102" width="138" height="72" rx="16"/>
+    <rect x="206" y="448" width="138" height="72" rx="16"/>
+    <rect x="636" y="448" width="138" height="72" rx="16"/>
+  </g>
+  <g font-family="Inter, Segoe UI, Arial" font-size="14" font-weight="700" fill="#d7e8f8">
+    <text x="236" y="143">Workloads</text>
+    <text x="669" y="143">Prometheus</text>
+    <text x="245" y="489">Loki</text>
+    <text x="664" y="489">Alertmanager</text>
+  </g>
+  <g fill="#5eead4">
+    <circle cx="220" cy="138" r="5"/>
+    <circle cx="650" cy="138" r="5"/>
+    <circle cx="220" cy="484" r="5"/>
+    <circle cx="650" cy="484" r="5"/>
+  </g>
+</svg>

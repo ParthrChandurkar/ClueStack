@@ -1,4 +1,20 @@
-# InfraWatch
+<p align="center">
+  <img src="website/src/assets/brand-lockup.png" alt="InfraWatch logo" width="520">
+</p>
+
+<h1 align="center">InfraWatch</h1>
+
+<p align="center"><strong>Deployment and infrastructure visibility in one place.</strong></p>
+
+<p align="center">
+  <a href="https://infrawatch-platform.vercel.app">Website</a>
+  ·
+  <a href="docs/GETTING_STARTED.md">Getting started</a>
+  ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a>
+  ·
+  <a href="ROADMAP.md">Roadmap</a>
+</p>
 
 InfraWatch is a local-first Kubernetes deployment and observability tool for lightweight local application testing.
 

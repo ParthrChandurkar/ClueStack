@@ -7,8 +7,10 @@ Deployment and Service manifests, then optionally applies them with kubectl.
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 from typing import Any
+from uuid import uuid4
 
 import yaml
 
@@ -16,12 +18,20 @@ from app.config import Settings
 from app.repository import AuditLogRepository, DeploymentRepository, utc_now
 from app.schemas import (
     DeploymentRecord,
+    DeploymentReportCreate,
+    DeploymentReportError,
+    DeploymentReportOperation,
+    DeploymentReportStatus,
     DeploymentRequest,
     DeploymentResponse,
     DeploymentStatus,
     PodHealth,
     WorkloadHealth,
 )
+from app.services.projects import ProjectService
+from app.services.reports import ReportService
+
+logger = logging.getLogger(__name__)
 
 
 class DeploymentExecutionError(RuntimeError):
@@ -36,15 +46,24 @@ class DeploymentService:
         settings: Settings,
         repository: DeploymentRepository,
         audit_repository: AuditLogRepository,
+        project_service: ProjectService | None = None,
+        report_service: ReportService | None = None,
     ) -> None:
         self._settings = settings
         self._repository = repository
         self._audit_repository = audit_repository
+        self._project_service = project_service
+        self._report_service = report_service
 
     def list_deployments(self) -> list[DeploymentRecord]:
         """List deployments known by InfraWatch."""
 
         return self._repository.list()
+
+    def list_deployments_for_project(self, project_id: str) -> list[DeploymentRecord]:
+        """List deployments explicitly associated with one project."""
+
+        return self._repository.list_by_project(project_id)
 
     def list_audit_logs(self, limit: int = 100):
         """List newest audit log entries."""
@@ -101,8 +120,10 @@ class DeploymentService:
     def deploy(self, request: DeploymentRequest) -> DeploymentResponse:
         """Create or update Kubernetes resources for a service."""
 
+        project_id = self._resolve_project_id(request)
+        started_at = utc_now()
         namespace = request.namespace or self._settings.kubectl_namespace
-        now = utc_now()
+        now = started_at
         existing = self._repository.get(request.name)
         manifest = self._build_manifest(request, namespace)
 
@@ -112,7 +133,9 @@ class DeploymentService:
             message = "Kubernetes manifest generated; kubectl execution is disabled in Demo Mode."
 
         record = DeploymentRecord(
+            id=existing.id if existing else str(uuid4()),
             name=request.name,
+            project_id=project_id,
             image=request.image,
             namespace=namespace,
             replicas=request.replicas,
@@ -128,25 +151,131 @@ class DeploymentService:
             created_at=existing.created_at if existing else now,
             updated_at=now,
         )
-        self._repository.upsert(record)
-        self._audit_repository.append(
-            action="deployment.simulated" if not self._settings.execute_kubectl else "deployment.requested",
-            service=record.name,
-            status="success",
-            message=record.message,
-            metadata={
-                "image": record.image,
-                "namespace": record.namespace,
-                "replicas": record.replicas,
-                "port": record.port,
-                "mode": "kubernetes" if self._settings.execute_kubectl else "manifest-simulation",
+        try:
+            self._repository.upsert(record)
+            self._audit_repository.append(
+                action="deployment.simulated" if not self._settings.execute_kubectl else "deployment.requested",
+                service=record.name,
+                status="success",
+                message=record.message,
+                metadata={
+                    "image": record.image,
+                    "namespace": record.namespace,
+                    "replicas": record.replicas,
+                    "port": record.port,
+                    "mode": "kubernetes" if self._settings.execute_kubectl else "manifest-simulation",
+                    "project_id": record.project_id,
+                },
+            )
+
+            if self._settings.execute_kubectl:
+                record = self._apply_and_verify_rollout(record, manifest)
+
+            report_status = DeploymentReportStatus.success
+            report_summary = "Deployment completed."
+            if record.status is DeploymentStatus.failed:
+                report_status = DeploymentReportStatus.failure
+                report_summary = "Deployment failed."
+            self._record_deploy_report(
+                request=request,
+                record=record,
+                status=report_status,
+                started_at=started_at,
+                summary=report_summary,
+                error_message=record.last_failure,
+            )
+            return DeploymentResponse(deployment=record, kubernetes_manifest=manifest)
+        except DeploymentExecutionError as exc:
+            failed_record = self._repository.get(request.name) or record
+            self._record_deploy_report(
+                request=request,
+                record=failed_record,
+                status=DeploymentReportStatus.failure,
+                started_at=started_at,
+                summary="Deployment failed.",
+                error=exc,
+            )
+            raise
+
+    def _record_deploy_report(
+        self,
+        *,
+        request: DeploymentRequest,
+        record: DeploymentRecord | None,
+        status: DeploymentReportStatus,
+        started_at,
+        summary: str,
+        error: Exception | None = None,
+        error_message: str | None = None,
+    ) -> None:
+        """Persist a best-effort deployment report without changing deploy behavior."""
+
+        if self._report_service is None:
+            return
+        completed_at = utc_now()
+        duration_ms = max(int((completed_at - started_at).total_seconds() * 1000), 0)
+        errors = []
+        if error is not None:
+            errors.append(
+                DeploymentReportError(
+                    code=error.__class__.__name__,
+                    message=self._bounded_error_message(error),
+                )
+            )
+        elif error_message:
+            errors.append(
+                DeploymentReportError(
+                    code="DeploymentFailed",
+                    message=self._bounded_text(error_message),
+                )
+            )
+        report = DeploymentReportCreate(
+            project_id=record.project_id if record else request.project_id,
+            deployment_id=record.id if record else None,
+            operation=DeploymentReportOperation.deploy,
+            status=status,
+            summary=summary,
+            target="local_kubernetes" if self._settings.execute_kubectl else "manifest_simulation",
+            commit_sha=request.commit_sha,
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            evidence={
+                "deployment_name": request.name,
+                "namespace": record.namespace if record else (request.namespace or self._settings.kubectl_namespace),
+                "image": request.image,
+                "replicas": request.replicas,
+                "port": request.port,
+                "execution_mode": "kubernetes" if self._settings.execute_kubectl else "manifest-simulation",
+                "status": record.status.value if record else None,
+                "ready_replicas": record.ready_replicas if record else None,
+                "available_replicas": record.available_replicas if record else None,
             },
+            errors=errors,
         )
+        try:
+            self._report_service.create(report)
+        except Exception:
+            logger.warning("Deployment report persistence failed; deployment result was preserved.")
 
-        if self._settings.execute_kubectl:
-            record = self._apply_and_verify_rollout(record, manifest)
+    @staticmethod
+    def _bounded_error_message(error: Exception) -> str:
+        """Return a short error summary suitable for report schema validation."""
 
-        return DeploymentResponse(deployment=record, kubernetes_manifest=manifest)
+        return DeploymentService._bounded_text(str(error)) or error.__class__.__name__
+
+    @staticmethod
+    def _bounded_text(value: str) -> str:
+        """Return a single-line string that fits report error bounds."""
+
+        return value.replace("\r", " ").replace("\n", " ")[:500]
+
+    def _resolve_project_id(self, request: DeploymentRequest) -> str | None:
+        """Return the deployment project ID or None for legacy service-only usage."""
+
+        if self._project_service is not None:
+            return self._project_service.resolve_local_deployment_project(request.project_id).id
+        return request.project_id
 
     def delete(self, name: str) -> DeploymentRecord | None:
         """Remove a service from Kubernetes and the local state store."""

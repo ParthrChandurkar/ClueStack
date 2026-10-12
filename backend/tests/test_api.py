@@ -2,14 +2,17 @@
 
 import asyncio
 import json
+from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 import httpx
 from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.report_sanitizer import REDACTION_MARKER
 from app.repository import connect_postgres
-from app.schemas import AlertsResponse, AlertSummary, MetricPoint, ServiceMetrics
+from app.schemas import AlertsResponse, AlertSummary, DeploymentReportCreate, MetricPoint, ServiceMetrics
 from app.services.observability import AlertmanagerClient, LokiClient, PrometheusClient
 
 
@@ -92,10 +95,31 @@ def build_client(tmp_path) -> TestClient:
         environment="test",
         state_file=str(tmp_path / "deployments.json"),
         audit_file=str(tmp_path / "audit-log.json"),
+        projects_file=str(tmp_path / "projects.json"),
+        reports_file=str(tmp_path / "reports.json"),
         execute_kubectl=False,
         allow_mock_observability=True,
     )
     return TestClient(create_app(settings))
+
+
+def sample_report(**overrides) -> DeploymentReportCreate:
+    """Build a valid deployment report for API tests."""
+
+    started_at = overrides.pop("started_at", datetime(2026, 10, 10, 10, 0, tzinfo=UTC))
+    payload = {
+        "operation": "deploy",
+        "status": "success",
+        "summary": "Deployment completed.",
+        "target": "local_kubernetes",
+        "started_at": started_at,
+        "completed_at": started_at + timedelta(minutes=1),
+        "duration_ms": 60_000,
+        "evidence": {"metrics_source": "prometheus"},
+        "errors": [],
+    }
+    payload.update(overrides)
+    return DeploymentReportCreate(**payload)
 
 
 def test_deployment_lifecycle(tmp_path) -> None:
@@ -113,6 +137,8 @@ def test_deployment_lifecycle(tmp_path) -> None:
     deploy_response = client.post("/deploy", json=payload)
     assert deploy_response.status_code == 202
     assert deploy_response.json()["deployment"]["status"] == "Running"
+    deployment_id = deploy_response.json()["deployment"]["id"]
+    UUID(deployment_id)
 
     health = client.get("/healthz")
     assert health.status_code == 200
@@ -122,6 +148,7 @@ def test_deployment_lifecycle(tmp_path) -> None:
     deployments = client.get("/deployments")
     assert deployments.status_code == 200
     assert deployments.json()[0]["name"] == "catalog-api"
+    assert deployments.json()[0]["id"] == deployment_id
 
     metrics = client.get("/metrics/catalog-api")
     assert metrics.status_code == 200
@@ -145,6 +172,173 @@ def test_deployment_lifecycle(tmp_path) -> None:
     assert events[0]["action"] == "deployment.deleted"
     assert events[0]["service"] == "catalog-api"
     assert events[1]["action"] == "deployment.simulated"
+
+
+def test_deployment_id_is_stable_across_redeployments(tmp_path) -> None:
+    """A service keeps its stable deployment UUID when the name-based deployment is updated."""
+
+    client = build_client(tmp_path)
+    payload = {
+        "name": "catalog-api",
+        "image": "docker.io/example/catalog-api:latest",
+        "replicas": 1,
+        "port": 8080,
+    }
+
+    first = client.post("/deploy", json=payload)
+    assert first.status_code == 202
+    deployment_id = first.json()["deployment"]["id"]
+    UUID(deployment_id)
+
+    second = client.post(
+        "/deploy",
+        json={
+            **payload,
+            "image": "docker.io/example/catalog-api:v2",
+            "replicas": 2,
+        },
+    )
+
+    assert second.status_code == 202
+    assert second.json()["deployment"]["id"] == deployment_id
+    assert second.json()["deployment"]["image"] == "docker.io/example/catalog-api:v2"
+    assert second.json()["deployment"]["replicas"] == 2
+
+
+def test_successful_deployment_creates_sanitized_report_with_stable_ids(tmp_path) -> None:
+    """A successful deployment attempt should create one historical report."""
+
+    client = build_client(tmp_path)
+    project = client.get("/projects/default-local").json()
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "catalog-api",
+            "project_id": project["id"],
+            "image": "redis://user:synthetic-secret@registry.example.com/catalog-api:latest",
+            "replicas": 2,
+            "port": 8080,
+            "environment": {"PASSWORD": "must-not-be-persisted"},
+        },
+    )
+
+    assert response.status_code == 202
+    deployment = response.json()["deployment"]
+    UUID(deployment["id"])
+
+    reports = client.get("/reports")
+    assert reports.status_code == 200
+    body = reports.json()
+    assert len(body) == 1
+    report = body[0]
+    UUID(report["id"])
+    assert report["operation"] == "deploy"
+    assert report["status"] == "success"
+    assert report["project_id"] == project["id"]
+    assert report["deployment_id"] == deployment["id"]
+    assert report["target"] == "manifest_simulation"
+    assert report["duration_ms"] >= 0
+    assert report["evidence"]["deployment_name"] == "catalog-api"
+    assert report["evidence"]["replicas"] == 2
+    assert "synthetic-secret" not in json.dumps(report["evidence"])
+    assert REDACTION_MARKER in report["evidence"]["image"]
+    assert "PASSWORD" not in json.dumps(report["evidence"])
+
+
+def test_failed_deployment_creates_failure_report_without_masking_result(monkeypatch, tmp_path) -> None:
+    """A Kubernetes rollout failure should preserve response behavior and persist a failure report."""
+
+    settings = Settings(
+        environment="test",
+        state_file=str(tmp_path / "deployments.json"),
+        audit_file=str(tmp_path / "audit-log.json"),
+        projects_file=str(tmp_path / "projects.json"),
+        reports_file=str(tmp_path / "reports.json"),
+        execute_kubectl=True,
+        allow_mock_observability=True,
+    )
+
+    def fail_rollout_status(_self, _name: str, _namespace: str) -> None:
+        raise RuntimeError("should not be used")
+
+    def fake_read_deployment_state(_self, _name: str, _namespace: str) -> dict:
+        return {"ready_replicas": 0, "available_replicas": 0, "observed_generation": None}
+
+    def fake_pod_failure_summary(_self, _name: str, _namespace: str) -> None:
+        return None
+
+    def raise_deployment_error(_self, _manifest: dict) -> None:
+        from app.services.deployments import DeploymentExecutionError
+
+        raise DeploymentExecutionError("kubectl failed token=synthetic-token")
+
+    monkeypatch.setattr("app.services.deployments.DeploymentService._kubectl_apply", raise_deployment_error)
+    monkeypatch.setattr("app.services.deployments.DeploymentService._kubectl_rollout_status", fail_rollout_status)
+    monkeypatch.setattr("app.services.deployments.DeploymentService._read_deployment_state", fake_read_deployment_state)
+    monkeypatch.setattr("app.services.deployments.DeploymentService._pod_failure_summary", fake_pod_failure_summary)
+    client = TestClient(create_app(settings))
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "catalog-api",
+            "image": "docker.io/example/catalog-api:latest",
+            "replicas": 1,
+            "port": 8080,
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json()["deployment"]["status"] == "Failed"
+    assert "kubectl failed" in response.json()["deployment"]["message"]
+    reports = client.get("/reports").json()
+    assert len(reports) == 1
+    report = reports[0]
+    assert report["status"] == "failure"
+    assert report["operation"] == "deploy"
+    UUID(report["deployment_id"])
+    assert "synthetic-token" not in report["errors"][0]["message"]
+    assert REDACTION_MARKER in report["errors"][0]["message"]
+
+
+def test_project_validation_failure_does_not_create_deployment_report(tmp_path) -> None:
+    """Project validation happens before deployment execution and should not create reports."""
+
+    client = build_client(tmp_path)
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "catalog-api",
+            "project_id": "00000000-0000-0000-0000-000000000404",
+            "image": "docker.io/example/catalog-api:latest",
+        },
+    )
+
+    assert response.status_code == 404
+    assert client.get("/reports").json() == []
+
+
+def test_report_persistence_failure_does_not_mask_success(monkeypatch, tmp_path) -> None:
+    """Report persistence failures should not turn a successful deployment into API failure."""
+
+    client = build_client(tmp_path)
+
+    def fail_create(_report):
+        raise RuntimeError("postgresql://user:secret@example/infrawatch")
+
+    monkeypatch.setattr(client.app.state.report_service, "create", fail_create)
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "catalog-api",
+            "image": "docker.io/example/catalog-api:latest",
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json()["deployment"]["name"] == "catalog-api"
 
 
 def test_unknown_deployment_delete_returns_404(tmp_path) -> None:
@@ -200,6 +394,8 @@ def test_workload_health_reads_live_kubernetes_payload(monkeypatch, tmp_path) ->
         environment="test",
         state_file=str(tmp_path / "deployments.json"),
         audit_file=str(tmp_path / "audit-log.json"),
+        projects_file=str(tmp_path / "projects.json"),
+        reports_file=str(tmp_path / "reports.json"),
         execute_kubectl=True,
         allow_mock_observability=True,
     )
@@ -322,6 +518,8 @@ def test_demo_runtime_can_seed_sample_services(tmp_path) -> None:
         environment="demo",
         state_file=str(tmp_path / "deployments.json"),
         audit_file=str(tmp_path / "audit-log.json"),
+        projects_file=str(tmp_path / "projects.json"),
+        reports_file=str(tmp_path / "reports.json"),
         execute_kubectl=False,
         seed_demo_data=True,
         allow_mock_observability=True,
@@ -335,6 +533,298 @@ def test_demo_runtime_can_seed_sample_services(tmp_path) -> None:
         "checkout-api",
         "payments-worker",
     }
+
+
+def test_project_api_creates_lists_and_gets_project(tmp_path) -> None:
+    """Project endpoints should expose file-backed project persistence."""
+
+    client = build_client(tmp_path)
+    payload = {
+        "name": "Catalog Local",
+        "slug": "catalog-local",
+        "mode": "local",
+        "source_type": "manual",
+        "default_namespace": "infrawatch",
+    }
+
+    created = client.post("/projects", json=payload)
+    assert created.status_code == 201
+    body = created.json()
+    assert body["name"] == "Catalog Local"
+    assert body["slug"] == "catalog-local"
+    assert body["mode"] == "local"
+    assert body["source_type"] == "manual"
+    assert body["repository_url"] is None
+    assert body["id"]
+
+    listed = client.get("/projects")
+    assert listed.status_code == 200
+    assert listed.json() == [body]
+
+    fetched = client.get(f"/projects/{body['id']}")
+    assert fetched.status_code == 200
+    assert fetched.json() == body
+
+
+def test_project_api_default_local_project_is_idempotent(tmp_path) -> None:
+    """The default-local endpoint should create then return the same project."""
+
+    client = build_client(tmp_path)
+
+    first = client.get("/projects/default-local")
+    second = client.get("/projects/default-local")
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert first.json() == second.json()
+    assert first.json()["slug"] == "default-local"
+    assert client.get("/projects").json() == [first.json()]
+
+
+def test_project_api_missing_project_returns_404(tmp_path) -> None:
+    """Unknown project IDs should return a clean 404 response."""
+
+    client = build_client(tmp_path)
+
+    response = client.get("/projects/00000000-0000-0000-0000-000000000000")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"
+
+
+def test_project_api_duplicate_slug_returns_409(tmp_path) -> None:
+    """Duplicate project slugs should become HTTP 409 conflicts."""
+
+    client = build_client(tmp_path)
+    payload = {"name": "Catalog Local", "slug": "catalog-local"}
+
+    assert client.post("/projects", json=payload).status_code == 201
+    duplicate = client.post("/projects", json={"name": "Another Catalog", "slug": "catalog-local"})
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "Project slug already exists"
+
+
+def test_project_api_invalid_payload_returns_422(tmp_path) -> None:
+    """FastAPI validation should reject inconsistent project payloads."""
+
+    client = build_client(tmp_path)
+    payload = {
+        "name": "Catalog",
+        "mode": "github_repository",
+        "source_type": "manual",
+        "repository_url": "https://github.com/example/catalog",
+    }
+
+    response = client.post("/projects", json=payload)
+
+    assert response.status_code == 422
+
+
+def test_deploy_without_project_uses_default_local_project(tmp_path) -> None:
+    """New deployments without project_id should be associated with default-local."""
+
+    client = build_client(tmp_path)
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "defaulted-api",
+            "image": "docker.io/example/defaulted-api:latest",
+            "replicas": 1,
+            "port": 8080,
+        },
+    )
+
+    assert response.status_code == 202
+    deployment = response.json()["deployment"]
+    default_project = client.get("/projects/default-local").json()
+    assert deployment["project_id"] == default_project["id"]
+
+    project_deployments = client.get(f"/projects/{default_project['id']}/deployments")
+    assert project_deployments.status_code == 200
+    assert [item["name"] for item in project_deployments.json()] == ["defaulted-api"]
+
+
+def test_deploy_with_explicit_local_project_id(tmp_path) -> None:
+    """A deployment can be explicitly associated with a local project."""
+
+    client = build_client(tmp_path)
+    project = client.post("/projects", json={"name": "Catalog Local", "slug": "catalog-local"}).json()
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "catalog-api",
+            "project_id": project["id"],
+            "image": "docker.io/example/catalog-api:latest",
+            "replicas": 2,
+            "port": 8080,
+        },
+    )
+
+    assert response.status_code == 202
+    assert response.json()["deployment"]["project_id"] == project["id"]
+    project_deployments = client.get(f"/projects/{project['id']}/deployments")
+    assert project_deployments.status_code == 200
+    assert [item["name"] for item in project_deployments.json()] == ["catalog-api"]
+
+
+def test_deploy_with_unknown_project_id_returns_404(tmp_path) -> None:
+    """Explicit unknown project IDs should be rejected without creating deployments."""
+
+    client = build_client(tmp_path)
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "missing-project-api",
+            "project_id": "00000000-0000-0000-0000-000000000000",
+            "image": "docker.io/example/missing-project-api:latest",
+            "replicas": 1,
+            "port": 8080,
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"
+    assert client.get("/deployments").json() == []
+
+
+def test_deploy_with_github_repository_project_returns_422(tmp_path) -> None:
+    """Local deployments should not be associated with repository-mode projects."""
+
+    client = build_client(tmp_path)
+    project = client.post(
+        "/projects",
+        json={
+            "name": "Catalog Repository",
+            "slug": "catalog-repository",
+            "mode": "github_repository",
+            "source_type": "github_public_readonly",
+            "repository_url": "https://github.com/example/catalog-api",
+        },
+    ).json()
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "repo-mode-api",
+            "project_id": project["id"],
+            "image": "docker.io/example/repo-mode-api:latest",
+            "replicas": 1,
+            "port": 8080,
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Local deployments require a local project"
+
+
+def test_project_deployments_missing_project_returns_404(tmp_path) -> None:
+    """Project-scoped deployment listing should validate the project first."""
+
+    client = build_client(tmp_path)
+
+    response = client.get("/projects/00000000-0000-0000-0000-000000000000/deployments")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"
+
+
+def test_report_api_empty_history(tmp_path) -> None:
+    """Report history should be empty before reports are created internally."""
+
+    client = build_client(tmp_path)
+
+    response = client.get("/reports")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_report_api_lists_filters_and_gets_reports(tmp_path) -> None:
+    """Report endpoints should expose internally persisted report history."""
+
+    client = build_client(tmp_path)
+    project = client.post("/projects", json={"name": "Catalog Local", "slug": "catalog-local"}).json()
+    deployment_id = "00000000-0000-0000-0000-000000000002"
+    matching = client.app.state.report_service._repository.create(
+        sample_report(project_id=project["id"], deployment_id=deployment_id)
+    )
+    client.app.state.report_service._repository.create(
+        sample_report(
+            project_id="00000000-0000-0000-0000-000000000003",
+            deployment_id=deployment_id,
+            started_at=datetime(2026, 10, 10, 10, 2, tzinfo=UTC),
+        )
+    )
+
+    listed = client.get("/reports")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+
+    filtered = client.get(f"/reports?project_id={project['id']}&deployment_id={deployment_id}")
+    assert filtered.status_code == 200
+    assert [item["id"] for item in filtered.json()] == [matching.id]
+
+    fetched = client.get(f"/reports/{matching.id}")
+    assert fetched.status_code == 200
+    assert fetched.json()["id"] == matching.id
+    assert fetched.json()["project_id"] == project["id"]
+
+
+def test_project_report_api_validates_project_and_lists_reports(tmp_path) -> None:
+    """Project-scoped report history should validate the project first."""
+
+    client = build_client(tmp_path)
+    project = client.post("/projects", json={"name": "Catalog Local", "slug": "catalog-local"}).json()
+    report = client.app.state.report_service._repository.create(sample_report(project_id=project["id"]))
+
+    response = client.get(f"/projects/{project['id']}/reports")
+
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [report.id]
+
+
+def test_report_api_missing_report_returns_404(tmp_path) -> None:
+    """Unknown report IDs should return a clean 404."""
+
+    client = build_client(tmp_path)
+
+    response = client.get("/reports/00000000-0000-0000-0000-000000000000")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Report not found"
+
+
+def test_project_report_api_missing_project_returns_404(tmp_path) -> None:
+    """Project-scoped reports should reject unknown projects."""
+
+    client = build_client(tmp_path)
+
+    response = client.get("/projects/00000000-0000-0000-0000-000000000000/reports")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Project not found"
+
+
+def test_report_api_returns_sanitized_report_data(tmp_path) -> None:
+    """Report data returned through the API should be sanitized by the repository boundary."""
+
+    client = build_client(tmp_path)
+    report = client.app.state.report_service._repository.create(
+        sample_report(
+            evidence={"headers": {"Authorization": "Bearer synthetic-token"}},
+            errors=[{"message": "failed with password=synthetic-password"}],
+        )
+    )
+
+    response = client.get(f"/reports/{report.id}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["evidence"]["headers"]["Authorization"] == "[REDACTED]"
+    assert "synthetic-password" not in body["errors"][0]["message"]
 
 
 def loki_payload(*streams: dict) -> dict:

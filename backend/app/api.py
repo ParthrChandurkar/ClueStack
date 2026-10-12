@@ -11,13 +11,17 @@ from app.schemas import (
     AlertsResponse,
     AuditLogEntry,
     DeploymentRecord,
+    DeploymentReportRecord,
     DeploymentRequest,
     DeploymentResponse,
     LogsResponse,
+    ProjectCreate,
+    ProjectRecord,
     ServiceMetrics,
     WorkloadHealth,
 )
 from app.services.deployments import DeploymentExecutionError
+from app.services.projects import ProjectConflictError, ProjectModeError, ProjectNotFoundError
 
 DEPLOYMENT_COUNTER = Counter("infrawatch_deployments_total", "Deployment actions accepted by InfraWatch")
 REQUEST_TIMER = Histogram("infrawatch_api_request_seconds", "InfraWatch API route execution time", ["route"])
@@ -57,6 +61,13 @@ def build_router() -> APIRouter:
                 response = request.app.state.deployment_service.deploy(payload)
                 DEPLOYMENT_COUNTER.inc()
                 return response
+            except ProjectNotFoundError as exc:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+            except ProjectModeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Local deployments require a local project",
+                ) from exc
             except DeploymentExecutionError as exc:
                 raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
@@ -76,6 +87,89 @@ def build_router() -> APIRouter:
 
         with REQUEST_TIMER.labels(route="/audit-logs").time():
             return request.app.state.deployment_service.list_audit_logs(limit=limit)
+
+    @router.get("/reports", response_model=list[DeploymentReportRecord], tags=["reports"])
+    async def list_reports(
+        request: Request,
+        project_id: str | None = Query(default=None),
+        deployment_id: str | None = Query(default=None),
+    ) -> list[DeploymentReportRecord]:
+        """List historical deployment reports."""
+
+        with REQUEST_TIMER.labels(route="/reports").time():
+            return request.app.state.report_service.list_reports(
+                project_id=project_id,
+                deployment_id=deployment_id,
+            )
+
+    @router.get("/reports/{report_id}", response_model=DeploymentReportRecord, tags=["reports"])
+    async def get_report(report_id: str, request: Request) -> DeploymentReportRecord:
+        """Return one historical deployment report by ID."""
+
+        with REQUEST_TIMER.labels(route="/reports/{report_id}").time():
+            report = request.app.state.report_service.get(report_id)
+            if report is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+            return report
+
+    @router.post(
+        "/projects",
+        response_model=ProjectRecord,
+        status_code=status.HTTP_201_CREATED,
+        tags=["projects"],
+    )
+    async def create_project(payload: ProjectCreate, request: Request) -> ProjectRecord:
+        """Create an InfraWatch project."""
+
+        with REQUEST_TIMER.labels(route="/projects").time():
+            try:
+                return request.app.state.project_service.create(payload)
+            except ProjectConflictError as exc:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Project slug already exists") from exc
+
+    @router.get("/projects", response_model=list[ProjectRecord], tags=["projects"])
+    async def list_projects(request: Request) -> list[ProjectRecord]:
+        """List InfraWatch projects."""
+
+        with REQUEST_TIMER.labels(route="/projects").time():
+            return request.app.state.project_service.list_projects()
+
+    @router.get("/projects/default-local", response_model=ProjectRecord, tags=["projects"])
+    async def default_local_project(request: Request) -> ProjectRecord:
+        """Create or retrieve the default local project."""
+
+        with REQUEST_TIMER.labels(route="/projects/default-local").time():
+            return request.app.state.project_service.get_or_create_default_local_project()
+
+    @router.get("/projects/{project_id}", response_model=ProjectRecord, tags=["projects"])
+    async def get_project(project_id: str, request: Request) -> ProjectRecord:
+        """Return one InfraWatch project by ID."""
+
+        with REQUEST_TIMER.labels(route="/projects/{project_id}").time():
+            project = request.app.state.project_service.get(project_id)
+            if project is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+            return project
+
+    @router.get("/projects/{project_id}/deployments", response_model=list[DeploymentRecord], tags=["projects"])
+    async def list_project_deployments(project_id: str, request: Request) -> list[DeploymentRecord]:
+        """List deployments explicitly associated with one project."""
+
+        with REQUEST_TIMER.labels(route="/projects/{project_id}/deployments").time():
+            project = request.app.state.project_service.get(project_id)
+            if project is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+            return request.app.state.deployment_service.list_deployments_for_project(project_id)
+
+    @router.get("/projects/{project_id}/reports", response_model=list[DeploymentReportRecord], tags=["projects"])
+    async def list_project_reports(project_id: str, request: Request) -> list[DeploymentReportRecord]:
+        """List reports explicitly associated with one project."""
+
+        with REQUEST_TIMER.labels(route="/projects/{project_id}/reports").time():
+            project = request.app.state.project_service.get(project_id)
+            if project is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+            return request.app.state.report_service.list_reports(project_id=project_id)
 
     @router.get("/metrics/{service}", response_model=ServiceMetrics, tags=["observability"])
     async def metrics(service: str, request: Request) -> ServiceMetrics:

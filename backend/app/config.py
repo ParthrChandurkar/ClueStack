@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     state_file: str = "/tmp/infrawatch/deployments.json"
     audit_file: str = "/tmp/infrawatch/audit-log.json"
+    projects_file: str = "/tmp/infrawatch/projects.json"
+    reports_file: str = "/tmp/infrawatch/reports.json"
     database_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices("INFRAWATCH_DATABASE_URL", "DATABASE_URL"),

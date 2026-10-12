@@ -1,42 +1,126 @@
 # InfraWatch
 
-InfraWatch is a local-first deployment and observability project for running a sample application stack with Docker Compose or Minikube. It combines a React dashboard, FastAPI backend, Kubernetes resources, Terraform-based namespace setup, a mixed manifest/Helm observability stack, and Redis-backed caching.
+InfraWatch is a local-first Kubernetes deployment and observability tool for lightweight local application testing.
 
-## Features
+It helps developers, students, and early SRE learners run a small local stack, inspect workload health, and understand metrics, logs, and alerts without manually wiring every component from scratch. InfraWatch integrates existing tools such as Docker, Minikube, Kubernetes, Terraform, Kustomize, Prometheus, Grafana, Loki, Grafana Alloy, Alertmanager, PostgreSQL, and Redis. It does not replace those tools.
 
-- React dashboard for deployment and infrastructure views
-- FastAPI endpoints for cluster, workload, and deployment operations
-- Docker Compose development stack
-- Minikube-oriented Kubernetes manifests and Kustomize configuration
-- Terraform configuration for the Kubernetes foundation
-- Mixed observability deployment: Kubernetes manifests for Prometheus, Grafana, Alertmanager, and kube-state-metrics; Helm for Loki and Grafana Alloy
-- PostgreSQL persistence and Redis caching
-- Failure-demonstration manifests for common Kubernetes workload states
-- GitHub Actions checks for code, tests, builds, images, and optional deployment
+InfraWatch v0.3.0 is a developer preview. It is meant for local development, testing, and learning, not for production cluster management or a hosted multi-tenant SaaS platform.
 
-## Architecture
+## What InfraWatch does
 
-The browser calls the FastAPI backend. The backend reads and changes resources in the connected Kubernetes cluster and uses PostgreSQL and Redis for application data and caching. Prometheus collects metrics; Grafana visualizes them; Alertmanager handles configured alerts. Docker Compose provides a local application stack, while Minikube exercises the Kubernetes path.
+- Provides an installable Python CLI:
+  - `infrawatch doctor`
+  - `infrawatch start`
+  - `infrawatch status`
+  - `infrawatch stop`
+- Runs a React dashboard for deployment, workload, metrics, logs, and alerts views.
+- Runs a FastAPI backend for local deployment operations and observability APIs.
+- Supports Docker Compose and Minikube-oriented local workflows.
+- Uses Terraform for Kubernetes foundation resources such as namespace, RBAC, ResourceQuota, ServiceAccount, and backend runtime ConfigMap.
+- Uses Kustomize for application runtime resources such as backend, frontend, PostgreSQL, Redis, HPA, Services, and ConfigMaps.
+- Uses PostgreSQL for persistence.
+- Uses Redis as a short-TTL cache for repeated Prometheus dashboard metric queries.
+- Reads service metrics from Prometheus.
+- Reads Kubernetes logs from Loki through Grafana Alloy labels.
+- Reads alert state from Alertmanager.
+- Includes packaged runtime resources so the CLI can run from an installed wheel outside the repository checkout.
+- Provides demo/mock behavior for first-time local exploration when live observability sources are not available.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for component boundaries and request flows.
+## Who it is for
 
-## Tech Stack
+InfraWatch is currently aimed at:
 
-| Area | Technologies |
+- developers testing lightweight containerized services locally;
+- students learning Kubernetes and observability workflows;
+- early SRE learners practicing rollout, health, metrics, logs, and alert scenarios;
+- contributors who want a small local-first project for experimenting with Kubernetes automation and dashboard behavior.
+
+It is not currently designed for platform teams operating production multi-tenant infrastructure.
+
+## Architecture at a glance
+
+```text
+Developer
+  -> infrawatch CLI
+  -> Docker / Minikube / Terraform / Kustomize / kubectl
+  -> InfraWatch Kubernetes runtime
+
+Browser
+  -> React dashboard
+  -> Nginx /api proxy
+  -> FastAPI backend
+  -> Kubernetes API, PostgreSQL, Redis
+  -> Prometheus, Loki, Alertmanager
+```
+
+Main components:
+
+| Component | Role |
 | --- | --- |
-| CLI | Python package, argparse |
-| Frontend | React, TypeScript, Vite |
-| Backend | Python, FastAPI |
-| Data | PostgreSQL, Redis |
-| Containers | Docker, Docker Compose |
-| Orchestration | Kubernetes, Minikube, Kustomize, Helm |
-| Infrastructure | Terraform |
-| Observability | Prometheus, Grafana, Loki, Grafana Alloy, Alertmanager |
-| Automation | GitHub Actions |
+| Python CLI | Runs diagnostics, starts/stops the local Kubernetes stack, and reports runtime status. |
+| React dashboard | Shows deployment state, workload health, metrics, logs, alerts, and local activity. |
+| FastAPI backend | Handles deployment operations and observability API responses. |
+| Terraform | Owns the local Kubernetes foundation resources. |
+| Kustomize | Owns the app runtime resources. |
+| PostgreSQL | Stores deployment and audit state. |
+| Redis | Caches repeated Prometheus metric responses briefly. |
+| Prometheus | Source for live metrics. |
+| Loki + Grafana Alloy | Source path for live Kubernetes logs. |
+| Alertmanager | Source for live alert visibility. |
+| Grafana | Provides observability dashboards for the local stack. |
 
-## Local Docker Stack
+Prometheus, Grafana, Alertmanager, and kube-state-metrics are installed through Kubernetes manifests. Loki and Grafana Alloy are installed through Helm.
 
-Prerequisites: Docker with the Compose plugin.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for deeper component boundaries and request flows.
+
+## Demo/mock data versus live telemetry
+
+InfraWatch intentionally separates demo behavior from live observability.
+
+In Docker Compose and first-time local exploration, mock fallback can be enabled so the dashboard remains usable even when a full Kubernetes observability stack is not running. Mock responses should be treated as sample data.
+
+In real local Kubernetes mode, live data comes from:
+
+- Kubernetes API for workload status;
+- Prometheus for CPU, memory, request-rate, and error-rate metrics;
+- Loki through Grafana Alloy for logs;
+- Alertmanager for alerts;
+- PostgreSQL for persisted deployment/audit state;
+- Redis for short-lived caching of real Prometheus responses.
+
+Redis does not replace Prometheus. It only avoids repeating identical Prometheus dashboard queries for a short TTL. If Redis is unavailable, the backend can query Prometheus directly.
+
+## Prerequisites
+
+Choose the setup path you want to use.
+
+For Docker Compose:
+
+- Docker Desktop or Docker Engine with the Docker Compose plugin
+
+For local Kubernetes with Minikube:
+
+- Python 3.11 or newer
+- Docker Desktop or Docker Engine
+- Minikube
+- `kubectl`
+- Terraform
+- Helm, when installing Loki and Grafana Alloy observability components
+
+InfraWatch is primarily validated around local Docker Desktop and Minikube-oriented workflows. Other Kubernetes distributions may work, but broad compatibility is not claimed.
+
+## Quick start with Docker Compose
+
+Use this path first if you want the fastest local dashboard/API experience.
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+.\scripts\start-local.ps1 -Detached
+```
+
+Manual Docker Compose path:
 
 ```powershell
 Copy-Item .env.example .env
@@ -44,87 +128,171 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Refer to [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) for the current service addresses and validation flow. Stop the stack with `docker compose down`.
+Default local URLs:
 
-## Python CLI Package Foundation
+| Tool | URL |
+| --- | --- |
+| InfraWatch dashboard | http://localhost:3000 |
+| FastAPI docs | http://localhost:8000/docs |
+| Grafana | http://localhost:3001 |
+| Prometheus | http://localhost:9090 |
+| Loki | http://localhost:3100 |
+| Grafana Alloy | http://localhost:12345 |
+| Alertmanager | http://localhost:9093 |
 
-InfraWatch now includes an installable Python CLI. From a repository checkout:
+Grafana credentials come from your local `.env` file. Start from `.env.example` and change local passwords before sharing logs or screenshots.
+
+Stop the Compose stack:
+
+```powershell
+.\scripts\stop-local.ps1
+```
+
+Or manually:
+
+```powershell
+docker compose down
+```
+
+## Python CLI usage
+
+From a repository checkout:
 
 ```powershell
 python -m pip install -e .
 infrawatch --help
 infrawatch --version
 infrawatch doctor
-infrawatch start
-infrawatch status
 ```
 
-For standalone local testing before a PyPI release, clone or download this repository, install the build tool, then build and install the local wheel:
+For a clean local wheel install before PyPI publication:
 
 ```powershell
 python -m pip install build
 python -m build
-python -m venv .venv-package-test
-.\.venv-package-test\Scripts\python.exe -m pip install (Get-ChildItem .\dist\infrawatch-*-py3-none-any.whl | Select-Object -Last 1).FullName
+python -m venv C:\Temp\infrawatch-wheel-test
+C:\Temp\infrawatch-wheel-test\Scripts\python.exe -m pip install (Get-ChildItem .\dist\infrawatch-*-py3-none-any.whl | Select-Object -Last 1).FullName
+Set-Location C:\Temp
+infrawatch --version
+infrawatch doctor
 ```
 
-The current package version is `0.3.0`, so the built wheel is expected to look like `dist/infrawatch-0.3.0-py3-none-any.whl`. The wildcard command above keeps the install step usable when the version changes. InfraWatch is not published to PyPI yet.
+InfraWatch is not published to PyPI yet. The current package version is `0.3.0`, but locally built artifacts should be regenerated only when you intentionally build them.
 
-The wheel includes the Terraform and Kubernetes runtime resources needed by the CLI, so `infrawatch doctor`, `infrawatch start`, and `infrawatch status` no longer require running from the Git repository.
+The installed wheel includes runtime Terraform, Kubernetes, monitoring, logging, and helper resources used by the CLI. When the CLI runs outside a repository checkout, it materializes those packaged resources into a local user cache.
 
-Use `infrawatch doctor` to check whether your machine has the local tools and repository configuration needed to run InfraWatch. It can report Kubernetes or Minikube warnings even when Docker is healthy if the cluster is stopped or unreachable. Use `infrawatch status` to inspect the current Kubernetes runtime state of InfraWatch components; it needs a reachable Kubernetes API to report workload state accurately.
+## Local Kubernetes workflow
 
-`infrawatch start` is the primary local Kubernetes startup path. It starts/reconciles Minikube, applies the Terraform foundation, applies the existing Kustomize manifests, waits for core workloads, and checks status. Observability installation remains explicit; on Windows you can add `--install-observability` to run the existing observability installer without starting long-running port-forward processes.
-
-`infrawatch stop` safely removes the local InfraWatch application runtime resources created by Kustomize, including backend, frontend, PostgreSQL, Redis, HPA, and app ConfigMaps. It intentionally preserves:
-
-- the Minikube cluster;
-- Terraform state;
-- Terraform-owned foundation resources such as namespace, RBAC, ResourceQuota, ServiceAccount, and backend runtime ConfigMap;
-- the generated `infrawatch-secrets` Secret, because PostgreSQL PVC data is preserved and must keep the same password;
-- observability workloads by default, so Prometheus/Grafana/Loki/Alloy can keep running across app restarts.
-
-If you intentionally want to remove the observability stack too, run:
-
-```powershell
-infrawatch stop --remove-observability
-```
-
-## Local Kubernetes Deployment
-
-Prerequisites: Docker, Minikube, `kubectl`, Terraform, and Helm.
-
-Preferred CLI path:
+The preferred Minikube-oriented path is:
 
 ```powershell
 infrawatch doctor
 infrawatch start
 infrawatch status
+```
+
+`infrawatch start` reconciles the local workflow:
+
+1. checks local prerequisites;
+2. starts or reuses Minikube;
+3. initializes and validates Terraform;
+4. reconciles Terraform-managed foundation resources;
+5. applies Kustomize-managed app resources;
+6. waits for PostgreSQL, Redis, backend, and frontend readiness;
+7. reports runtime status.
+
+To install the observability stack through the CLI when supported:
+
+```powershell
+infrawatch start --install-observability
+```
+
+To require live observability responses instead of mock fallback:
+
+```powershell
+infrawatch start --strict-observability
+```
+
+To stop the app runtime while preserving the local foundation and data:
+
+```powershell
 infrawatch stop
 ```
 
-The repository includes helper scripts under `scripts/` as well as a manual path. The core manual flow is:
+The default stop path preserves:
+
+- the Minikube cluster;
+- Terraform state;
+- Terraform-owned foundation resources;
+- PostgreSQL PVC data;
+- the generated `infrawatch-secrets` Secret, because retained PostgreSQL data needs the same password;
+- observability workloads by default.
+
+To intentionally remove observability workloads too:
+
+```powershell
+infrawatch stop --remove-observability
+```
+
+## Repository helper scripts
+
+The repository also includes script-backed workflows.
+
+Docker Compose:
+
+```powershell
+.\scripts\start-local.ps1 -Detached
+.\scripts\doctor.ps1
+.\scripts\stop-local.ps1
+```
+
+Windows Minikube path:
+
+```powershell
+.\scripts\start-k8s.ps1
+.\scripts\start-observability.ps1
+.\scripts\stop-observability.ps1
+.\scripts\stop-k8s.ps1
+```
+
+Linux/macOS Bash path:
+
+```bash
+bash scripts/setup.sh
+bash scripts/health-check.sh
+```
+
+Use the scripts when you want more explicit control or when debugging a local environment.
+
+## Manual Kubernetes path
+
+The manual path is useful for contributors who want to inspect each layer.
 
 ```powershell
 minikube start
 minikube addons enable metrics-server
 
-Set-Location terraform
-terraform init
-terraform validate
-terraform apply -var="kube_context=minikube"
-Set-Location ..
+terraform -chdir=terraform init
+terraform -chdir=terraform validate
+terraform -chdir=terraform apply -var="kube_context=minikube"
 
-kubectl create secret generic infrawatch-secrets --namespace infrawatch --from-literal=POSTGRES_PASSWORD=replace-me --from-literal=DATABASE_URL=postgresql://infrawatch:replace-me@infrawatch-postgres:5432/infrawatch
+kubectl create secret generic infrawatch-secrets `
+  --namespace infrawatch `
+  --from-literal=POSTGRES_PASSWORD=use-a-strong-local-password `
+  --from-literal=DATABASE_URL=postgresql://infrawatch:use-a-strong-local-password@infrawatch-postgres:5432/infrawatch
+
 kubectl apply -k k8s
+kubectl rollout status statefulset/infrawatch-postgres --namespace infrawatch --timeout=180s
 kubectl rollout status deployment/infrawatch-backend --namespace infrawatch --timeout=180s
 kubectl rollout status deployment/infrawatch-frontend --namespace infrawatch --timeout=180s
 minikube service infrawatch-frontend --namespace infrawatch
 ```
 
-Use a strong local password and do not commit generated Secret manifests. Monitoring installation details are documented in the repository scripts and monitoring configuration.
+Do not commit generated Secret manifests or real credentials.
 
-## Verification
+## Validation and development checks
+
+These commands are supported by the repository configuration.
 
 Backend:
 
@@ -132,6 +300,14 @@ Backend:
 Set-Location backend
 python -m ruff check app tests
 python -m pytest
+Set-Location ..
+```
+
+CLI:
+
+```powershell
+python -m ruff check infrawatch tests
+python -m pytest tests
 ```
 
 Frontend:
@@ -141,24 +317,61 @@ Set-Location frontend
 npm ci
 npm run lint
 npm run build
+Set-Location ..
 ```
 
-Infrastructure configuration:
+Infrastructure and packaging:
 
 ```powershell
 docker compose config --quiet
 kubectl kustomize k8s
+terraform -chdir=terraform init -backend=false
+terraform -chdir=terraform fmt -check
 terraform -chdir=terraform validate
+python -m build
 ```
 
-## CI/CD
+These checks validate configuration and build behavior. They do not prove that your local Kubernetes cluster is healthy unless you also run the local runtime workflow against a reachable cluster.
 
-`.github/workflows/ci-cd.yml` verifies backend and frontend code and builds container images. Publishing and cluster rollout require configured registry and Kubernetes credentials. A GitHub-hosted runner cannot directly reach a laptop-only Minikube cluster; the repository documents an optional self-hosted runner path for that case.
+## CI/CD notes
+
+The GitHub Actions workflow validates backend, CLI, frontend, Docker Compose, Kustomize, Terraform, Docker image builds, and the Python package build.
+
+The workflow can publish Docker images when DockerHub credentials are configured. Remote Kubernetes deployment requires `KUBE_CONFIG_B64`; if that secret is missing, deployment is skipped. A GitHub-hosted runner cannot directly reach a laptop-only Minikube cluster. The repository includes a separate self-hosted runner path for local Minikube use.
 
 ## Limitations
 
-- InfraWatch is designed for local development and demonstration, not as a hosted multi-tenant control plane.
-- User authentication, multi-tenant authorization, TLS ingress, and arbitrary Git repository onboarding are not implemented.
-- The UI deploys an existing container image; it does not build arbitrary user repositories.
-- Local Minikube availability and resource capacity depend on the host machine.
+InfraWatch is a developer preview. Current limitations include:
 
+- no user authentication;
+- no multi-tenant authorization model;
+- no hosted SaaS control plane;
+- no automatic onboarding or building of arbitrary Git repositories;
+- no production Ingress or TLS setup by default;
+- no production cluster management claim;
+- no universal Kubernetes distribution or operating system support claim;
+- primary validation around local Docker Desktop and Minikube-oriented workflows.
+
+Future work may explore a limited user-provided container image or Kubernetes manifest workflow, but arbitrary repository builds and automatic GitHub onboarding are not implemented today.
+
+## Project boundaries and roadmap
+
+- [SCOPE.md](SCOPE.md) explains the project purpose, current capabilities, limitations, and non-goals.
+- [ROADMAP.md](ROADMAP.md) describes the directional roadmap for future local-first improvements.
+- [docs/README.md](docs/README.md) is the documentation index.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains component boundaries and request flows.
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) provides a more detailed onboarding path.
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) covers common local setup issues.
+
+## Contributing and security
+
+Contributions are welcome when they stay within the local-first scope and include clear validation results.
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+- Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- Report vulnerabilities using [SECURITY.md](SECURITY.md).
+- Avoid posting credentials, tokens, kubeconfig contents, private logs, or sensitive application data in public issues or pull requests.
+
+## License
+
+InfraWatch is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for the full license text.

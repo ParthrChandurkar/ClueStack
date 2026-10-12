@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from starlette.responses import Response
 
+from app import __version__
 from app.api import build_router
 from app.config import Settings, get_settings
 from app.repository import (
@@ -20,10 +21,14 @@ from app.repository import (
     FileDeploymentRepository,
     PostgresAuditLogRepository,
     PostgresDeploymentRepository,
+    build_project_repository,
+    build_report_repository,
 )
 from app.schemas import DeploymentRequest
 from app.services.deployments import DeploymentService
 from app.services.observability import AlertmanagerClient, LokiClient, PrometheusClient
+from app.services.projects import ProjectService
+from app.services.reports import ReportService
 
 HTTP_REQUEST_COUNTER = Counter(
     "http_requests_total",
@@ -43,8 +48,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     active_settings = settings or get_settings()
     app = FastAPI(
         title=active_settings.app_name,
-        version="0.1.0",
-        description="Cloud-native deployment and observability control plane.",
+        version=__version__,
+        description="Local-first Kubernetes deployment and observability platform.",
     )
 
     app.add_middleware(
@@ -56,8 +61,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     repository, audit_repository = _build_repositories(active_settings)
+    project_repository = build_project_repository(active_settings.database_url, active_settings.projects_file)
+    report_repository = build_report_repository(active_settings.database_url, active_settings.reports_file)
+    project_service = ProjectService(project_repository)
+    report_service = ReportService(report_repository)
     app.state.settings = active_settings
-    app.state.deployment_service = DeploymentService(active_settings, repository, audit_repository)
+    app.state.project_service = project_service
+    app.state.report_service = report_service
+    app.state.deployment_service = DeploymentService(
+        active_settings,
+        repository,
+        audit_repository,
+        project_service,
+        report_service,
+    )
     app.state.prometheus_client = PrometheusClient(active_settings)
     app.state.loki_client = LokiClient(active_settings)
     app.state.alertmanager_client = AlertmanagerClient(active_settings)

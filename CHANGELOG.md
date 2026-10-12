@@ -2,11 +2,15 @@
 
 All notable project changes will be summarized here.
 
-## Unreleased - developer preview
+## Unreleased
 
-InfraWatch is currently an early local-first developer preview. It is not a formal stable release.
+No unreleased user-facing changes have been summarized yet.
 
-Current capabilities:
+## v0.3.0 - Developer Preview
+
+InfraWatch v0.3.0 is an early local-first developer preview. It is not a formal stable production release.
+
+Included capabilities:
 
 - local Kubernetes deployment workflow with Minikube, Terraform, and Kustomize;
 - installable Python CLI with `doctor`, `start`, `status`, and `stop`;
@@ -25,4 +29,5 @@ Known development status:
 - designed for local development, testing, and SRE learning;
 - not a hosted SaaS or multi-tenant production control plane;
 - not yet published to PyPI;
-- public contribution and security processes are being prepared.
+- GitHub Actions can validate, build, and publish Docker images when configured;
+- Kubernetes rollout from CI is optional and requires the relevant secret/configuration.

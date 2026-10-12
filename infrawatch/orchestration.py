@@ -92,8 +92,8 @@ def lifecycle_guidance(command: str, repo_root: Path | None = None) -> str:
     lines.extend(
         [
             "",
-            "Phase 3 currently provides the installable CLI foundation only.",
-            "A later phase will wire these commands to the existing scripts safely.",
+            "Use the installed CLI for the supported local lifecycle commands.",
+            "For lower-level troubleshooting, see README.md and docs/GETTING_STARTED.md.",
         ]
     )
     return "\n".join(lines)

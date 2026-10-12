@@ -39,7 +39,7 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Codex/local verification artifacts.
+# Local verification artifacts.
 .codex-logs/
 .infrawatch/
 

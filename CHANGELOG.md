@@ -8,7 +8,7 @@ No unreleased user-facing changes have been summarized yet.
 
 ## v0.3.0 - Developer Preview
 
-InfraWatch v0.3.0 is an early local-first developer preview. It is not a formal stable production release.
+This release was published under the project's former InfraWatch name. It is an early local-first developer preview, not a formal stable production release.
 
 Included capabilities:
 

@@ -1,24 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 430 112" role="img" aria-labelledby="title desc">
-  <title id="title">InfraWatch</title>
-  <desc id="desc">InfraWatch wordmark with a geometric deployment and observability symbol.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 112" role="img" aria-labelledby="title desc">
+  <title id="title">ClueStack</title>
+  <desc id="desc">ClueStack wordmark with an investigative lens tracing connected infrastructure signals.</desc>
   <defs>
-    <linearGradient id="frame" x1="20" y1="12" x2="92" y2="100" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#12385a"/>
-      <stop offset="1" stop-color="#0b1628"/>
+    <linearGradient id="panel" x1="14" y1="8" x2="98" y2="104" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#132842"/>
+      <stop offset="1" stop-color="#07111f"/>
     </linearGradient>
-    <linearGradient id="signal" x1="22" y1="56" x2="90" y2="56" gradientUnits="userSpaceOnUse">
+    <linearGradient id="lens" x1="24" y1="30" x2="82" y2="88" gradientUnits="userSpaceOnUse">
       <stop stop-color="#5eead4"/>
-      <stop offset=".52" stop-color="#45c4f0"/>
-      <stop offset="1" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#22a6d5"/>
     </linearGradient>
   </defs>
-  <path d="M56 8 96 31v50l-40 23-40-23V31L56 8Z" fill="url(#frame)" stroke="#28445e" stroke-width="3"/>
-  <path d="M56 23 82 38v32L56 85 30 70V38l26-15Z" fill="#08111f" stroke="#45c4f0" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M31 57h13l6-13 11 28 7-15h13" fill="none" stroke="url(#signal)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="30" cy="38" r="6" fill="#e7f6ff"/>
-  <circle cx="82" cy="38" r="6" fill="#e7f6ff"/>
-  <circle cx="56" cy="85" r="6" fill="#e7f6ff"/>
-  <circle cx="56" cy="23" r="5" fill="#5eead4"/>
-  <text x="126" y="63" fill="#eaf3ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="41" font-weight="780" letter-spacing="-.04em">Infra<tspan fill="#8fd8ff">Watch</tspan></text>
-  <text x="128" y="86" fill="#8fa3ba" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing=".09em">DEPLOYMENT VISIBILITY FOR LOCAL INFRA</text>
+  <rect x="6" y="6" width="100" height="100" rx="26" fill="url(#panel)" stroke="#2b4864" stroke-width="3"/>
+  <path d="M24 33h54M34 31l7-13h26l9 13" fill="#ffbd4a" stroke="#ffbd4a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="50" cy="57" r="25" fill="#081827" stroke="url(#lens)" stroke-width="6"/>
+  <path d="m69 76 20 20" fill="none" stroke="#ffbd4a" stroke-width="9" stroke-linecap="round"/>
+  <path d="M31 59h10l6-11 8 19 6-10h9" fill="none" stroke="#d9fff9" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="31" cy="59" r="4" fill="#5eead4"/>
+  <circle cx="47" cy="48" r="4" fill="#ffbd4a"/>
+  <circle cx="70" cy="57" r="4" fill="#5eead4"/>
+  <text x="130" y="64" fill="#eff8ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="43" font-weight="780" letter-spacing="-.04em">Clue<tspan fill="#5eead4">Stack</tspan></text>
+  <text x="132" y="88" fill="#9fb2c6" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing=".07em">EVERY SIGNAL TELLS A STORY.</text>
 </svg>

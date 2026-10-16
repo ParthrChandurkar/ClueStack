@@ -102,7 +102,7 @@ $Namespace = "infrawatch"
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "InfraWatch local Kubernetes stack" -ForegroundColor Green
+Write-Host "ClueStack local Kubernetes stack" -ForegroundColor Green
 Write-Host ""
 
 foreach ($command in @("docker", "kubectl", "minikube", "terraform")) {
@@ -159,10 +159,10 @@ Assert-LastCommand "Could not switch kubectl context to minikube."
 Write-Info "Enabling Minikube metrics-server addon"
 & minikube addons enable metrics-server
 if ($LASTEXITCODE -ne 0) {
-    Write-Warn "metrics-server addon could not be enabled automatically. InfraWatch can still start, but kubectl top/HPA metrics may be delayed."
+    Write-Warn "metrics-server addon could not be enabled automatically. ClueStack can still start, but kubectl top/HPA metrics may be delayed."
 }
 
-Write-Info "Applying Terraform-managed InfraWatch foundation"
+Write-Info "Applying Terraform-managed ClueStack foundation"
 & terraform -chdir=terraform init
 Assert-LastCommand "Terraform init failed."
 
@@ -215,9 +215,9 @@ if ($ShouldApplySecret) {
     Assert-LastCommand "Could not apply the infrawatch-secrets secret."
 }
 
-Write-Info "Applying InfraWatch Kubernetes manifests"
+Write-Info "Applying ClueStack Kubernetes manifests"
 & kubectl apply -k k8s
-Assert-LastCommand "Could not apply InfraWatch Kubernetes manifests."
+Assert-LastCommand "Could not apply ClueStack Kubernetes manifests."
 
 $AllowMockObservability = if ($StrictObservability) { "false" } else { "true" }
 if ($StrictObservability) {
@@ -280,7 +280,7 @@ Write-Info "Collecting local dashboard URL"
 $DashboardUrl = (& minikube service infrawatch-frontend --namespace $Namespace --url 2>$null | Select-Object -First 1)
 
 Write-Host ""
-Write-Host "InfraWatch is running on local Kubernetes." -ForegroundColor Green
+Write-Host "ClueStack is running on local Kubernetes." -ForegroundColor Green
 Write-Host ""
 
 if (-not [string]::IsNullOrWhiteSpace($DashboardUrl)) {

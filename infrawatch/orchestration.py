@@ -1,7 +1,7 @@
-"""CLI orchestration helpers for InfraWatch.
+"""CLI orchestration helpers for ClueStack.
 
 The CLI is intentionally thin in this phase. It discovers whether the command
-is being run from an InfraWatch repository checkout and points users to the
+is being run from a ClueStack repository checkout and points users to the
 existing scripts that currently own Docker, Terraform, Kustomize, and
 Kubernetes behavior.
 """
@@ -15,7 +15,7 @@ REPO_MARKERS = ("docker-compose.yml", "k8s", "terraform", "scripts")
 
 
 def find_repo_root(start: Path | None = None) -> Path | None:
-    """Return the nearest InfraWatch repository root, if the current tree has one."""
+    """Return the nearest ClueStack repository root, if the current tree has one."""
 
     current = (start or Path.cwd()).resolve()
     candidates = (current, *current.parents)
@@ -52,13 +52,13 @@ def lifecycle_guidance(command: str, repo_root: Path | None = None) -> str:
     if root is None:
         lines.extend(
             [
-                "Run this command from an InfraWatch repository checkout to see the current script-based workflow.",
+                "Run this command from a ClueStack repository checkout to see the current script-based workflow.",
                 "For now, use the documented Docker Compose or Minikube setup from the project README.",
             ]
         )
         return "\n".join(lines)
 
-    lines.append(f"Detected InfraWatch repository: {root}")
+    lines.append(f"Detected ClueStack repository: {root}")
     lines.append("Current supported workflow:")
 
     if command == "start":

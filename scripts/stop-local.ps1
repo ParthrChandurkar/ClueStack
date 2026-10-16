@@ -34,7 +34,7 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "Stopping InfraWatch local stack" -ForegroundColor Green
+Write-Host "Stopping ClueStack local stack" -ForegroundColor Green
 Write-Host ""
 
 if (-not (Test-CommandAvailable "docker")) {
@@ -53,7 +53,7 @@ $ComposeArgs = @("compose", "down")
 if ($Volumes) {
     $ComposeArgs += "--volumes"
     $ComposeArgs += "--remove-orphans"
-    Write-Host "This will also remove local Docker volumes for InfraWatch." -ForegroundColor Yellow
+    Write-Host "This will also remove local Docker volumes for ClueStack." -ForegroundColor Yellow
 }
 
 & docker @ComposeArgs
@@ -62,7 +62,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host ""
-Write-Host "InfraWatch stopped." -ForegroundColor Green
+Write-Host "ClueStack stopped." -ForegroundColor Green
 
 if ($Volumes) {
     Write-Host "Local volumes were removed."

@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="website/src/assets/brand-lockup.png" alt="InfraWatch logo" width="520">
+  <img src="website/src/assets/logo.svg" alt="ClueStack logo" width="520">
 </p>
 
-<h1 align="center">InfraWatch</h1>
+<h1 align="center">ClueStack</h1>
 
-<p align="center"><strong>Deployment and infrastructure visibility in one place.</strong></p>
+<p align="center"><strong>Every signal tells a story.</strong></p>
 
 <p align="center">
   <a href="https://infrawatch-platform.vercel.app">Website</a>
@@ -16,13 +16,15 @@
   <a href="ROADMAP.md">Roadmap</a>
 </p>
 
-InfraWatch is a local-first Kubernetes deployment and observability tool for lightweight local application testing.
+ClueStack is a Local Application Deployment & Observability Platform that combines deployments, metrics, logs, alerts, and reports to help developers understand system behavior.
 
-It helps developers, students, and early SRE learners run a small local stack, inspect workload health, and understand metrics, logs, and alerts without manually wiring every component from scratch. InfraWatch integrates existing tools such as Docker, Minikube, Kubernetes, Terraform, Kustomize, Prometheus, Grafana, Loki, Grafana Alloy, Alertmanager, PostgreSQL, and Redis. It does not replace those tools.
+It helps developers, students, and early SRE learners run a small local stack, inspect workload health, and understand metrics, logs, and alerts without manually wiring every component from scratch. ClueStack integrates existing tools such as Docker, Minikube, Kubernetes, Terraform, Kustomize, Prometheus, Grafana, Loki, Grafana Alloy, Alertmanager, PostgreSQL, and Redis. It does not replace those tools.
 
-InfraWatch v0.3.0 is a developer preview. It is meant for local development, testing, and learning, not for production cluster management or a hosted multi-tenant SaaS platform.
+The current v0.3.0 developer preview was released under the project's former InfraWatch name. ClueStack is meant for local development, testing, and learning, not for production cluster management or a hosted multi-tenant SaaS platform.
 
-## What InfraWatch does
+The installed command, Python package, environment variables, Kubernetes resources, and existing repository URLs continue to use the `infrawatch` identifier for compatibility.
+
+## What ClueStack does
 
 - Provides an installable Python CLI:
   - `infrawatch doctor`
@@ -44,7 +46,7 @@ InfraWatch v0.3.0 is a developer preview. It is meant for local development, tes
 
 ## Who it is for
 
-InfraWatch is currently aimed at:
+ClueStack is currently aimed at:
 
 - developers testing lightweight containerized services locally;
 - students learning Kubernetes and observability workflows;
@@ -59,7 +61,7 @@ It is not currently designed for platform teams operating production multi-tenan
 Developer
   -> infrawatch CLI
   -> Docker / Minikube / Terraform / Kustomize / kubectl
-  -> InfraWatch Kubernetes runtime
+  -> ClueStack Kubernetes runtime
 
 Browser
   -> React dashboard
@@ -91,7 +93,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for deeper component boundaries
 
 ## Demo/mock data versus live telemetry
 
-InfraWatch intentionally separates demo behavior from live observability.
+ClueStack intentionally separates demo behavior from live observability.
 
 In Docker Compose and first-time local exploration, mock fallback can be enabled so the dashboard remains usable even when a full Kubernetes observability stack is not running. Mock responses should be treated as sample data.
 
@@ -123,7 +125,7 @@ For local Kubernetes with Minikube:
 - Terraform
 - Helm, when installing Loki and Grafana Alloy observability components
 
-InfraWatch is primarily validated around local Docker Desktop and Minikube-oriented workflows. Other Kubernetes distributions may work, but broad compatibility is not claimed.
+ClueStack is primarily validated around local Docker Desktop and Minikube-oriented workflows. Other Kubernetes distributions may work, but broad compatibility is not claimed.
 
 ## Quick start with Docker Compose
 
@@ -148,7 +150,7 @@ Default local URLs:
 
 | Tool | URL |
 | --- | --- |
-| InfraWatch dashboard | http://localhost:3000 |
+| ClueStack dashboard | http://localhost:3000 |
 | FastAPI docs | http://localhost:8000/docs |
 | Grafana | http://localhost:3001 |
 | Prometheus | http://localhost:9090 |
@@ -193,7 +195,7 @@ infrawatch --version
 infrawatch doctor
 ```
 
-InfraWatch is not published to PyPI yet. The current package version is `0.3.0`, but locally built artifacts should be regenerated only when you intentionally build them.
+ClueStack is not published to PyPI yet. The current package version is `0.3.0`, but locally built artifacts should be regenerated only when you intentionally build them.
 
 The installed wheel includes runtime Terraform, Kubernetes, monitoring, logging, and helper resources used by the CLI. When the CLI runs outside a repository checkout, it materializes those packaged resources into a local user cache.
 
@@ -357,7 +359,7 @@ The workflow can publish Docker images when DockerHub credentials are configured
 
 ## Limitations
 
-InfraWatch is a developer preview. Current limitations include:
+ClueStack is a developer preview. Current limitations include:
 
 - no user authentication;
 - no multi-tenant authorization model;
@@ -390,4 +392,4 @@ Contributions are welcome when they stay within the local-first scope and includ
 
 ## License
 
-InfraWatch is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for the full license text.
+ClueStack is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for the full license text.

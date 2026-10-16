@@ -1,4 +1,4 @@
-"""Runtime configuration for the InfraWatch API.
+"""Runtime configuration for the ClueStack API.
 
 All operational settings are read from environment variables so secrets and
 cluster-specific values never need to be hardcoded in source control.
@@ -14,7 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Environment-backed application settings."""
 
-    app_name: str = "InfraWatch API"
+    app_name: str = "ClueStack API"
     environment: str = "development"
     log_level: str = "INFO"
     service_name: str = "infrawatch-backend"

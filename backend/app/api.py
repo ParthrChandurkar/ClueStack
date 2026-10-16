@@ -1,4 +1,4 @@
-"""HTTP routes for the InfraWatch REST API.
+"""HTTP routes for the ClueStack REST API.
 
 Routes are intentionally thin and delegate orchestration to services stored on
 FastAPI application state.
@@ -23,12 +23,12 @@ from app.schemas import (
 from app.services.deployments import DeploymentExecutionError
 from app.services.projects import ProjectConflictError, ProjectModeError, ProjectNotFoundError
 
-DEPLOYMENT_COUNTER = Counter("infrawatch_deployments_total", "Deployment actions accepted by InfraWatch")
-REQUEST_TIMER = Histogram("infrawatch_api_request_seconds", "InfraWatch API route execution time", ["route"])
+DEPLOYMENT_COUNTER = Counter("infrawatch_deployments_total", "Deployment actions accepted by ClueStack")
+REQUEST_TIMER = Histogram("infrawatch_api_request_seconds", "ClueStack API route execution time", ["route"])
 
 
 def build_router() -> APIRouter:
-    """Build the API router with all public InfraWatch endpoints."""
+    """Build the API router with all public ClueStack endpoints."""
 
     router = APIRouter()
 
@@ -73,7 +73,7 @@ def build_router() -> APIRouter:
 
     @router.get("/deployments", tags=["deployments"])
     async def deployments(request: Request):
-        """List all deployments known to InfraWatch."""
+        """List all deployments known to ClueStack."""
 
         with REQUEST_TIMER.labels(route="/deployments").time():
             return request.app.state.deployment_service.list_deployments()
@@ -83,7 +83,7 @@ def build_router() -> APIRouter:
         request: Request,
         limit: int = Query(default=50, ge=1, le=200),
     ) -> list[AuditLogEntry]:
-        """List recent operational actions recorded by InfraWatch."""
+        """List recent operational actions recorded by ClueStack."""
 
         with REQUEST_TIMER.labels(route="/audit-logs").time():
             return request.app.state.deployment_service.list_audit_logs(limit=limit)
@@ -119,7 +119,7 @@ def build_router() -> APIRouter:
         tags=["projects"],
     )
     async def create_project(payload: ProjectCreate, request: Request) -> ProjectRecord:
-        """Create an InfraWatch project."""
+        """Create a ClueStack project."""
 
         with REQUEST_TIMER.labels(route="/projects").time():
             try:
@@ -129,7 +129,7 @@ def build_router() -> APIRouter:
 
     @router.get("/projects", response_model=list[ProjectRecord], tags=["projects"])
     async def list_projects(request: Request) -> list[ProjectRecord]:
-        """List InfraWatch projects."""
+        """List ClueStack projects."""
 
         with REQUEST_TIMER.labels(route="/projects").time():
             return request.app.state.project_service.list_projects()
@@ -143,7 +143,7 @@ def build_router() -> APIRouter:
 
     @router.get("/projects/{project_id}", response_model=ProjectRecord, tags=["projects"])
     async def get_project(project_id: str, request: Request) -> ProjectRecord:
-        """Return one InfraWatch project by ID."""
+        """Return one ClueStack project by ID."""
 
         with REQUEST_TIMER.labels(route="/projects/{project_id}").time():
             project = request.app.state.project_service.get(project_id)
@@ -240,7 +240,7 @@ def build_router() -> APIRouter:
 
     @router.delete("/deployment/{name}", status_code=status.HTTP_200_OK, tags=["deployments"])
     async def delete_deployment(name: str, request: Request) -> dict[str, str]:
-        """Tear down a deployment and remove its InfraWatch state."""
+        """Tear down a deployment and remove its ClueStack state."""
 
         with REQUEST_TIMER.labels(route="/deployment/{name}").time():
             try:

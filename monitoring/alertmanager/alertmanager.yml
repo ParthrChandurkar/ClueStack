@@ -1,4 +1,4 @@
-# Alertmanager routing configuration for local InfraWatch environments.
+# Alertmanager routing configuration for local ClueStack environments.
 route:
   receiver: default-notifications
   group_by:

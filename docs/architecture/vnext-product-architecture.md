@@ -1,10 +1,10 @@
-# InfraWatch vNext Product Architecture
+# ClueStack vNext Product Architecture
 
 ## 1. Purpose and product contract
 
-InfraWatch vNext is intended to be a full web application plus CLI for students and developers who want to understand, deploy, and observe applications through one accessible interface.
+ClueStack vNext is intended to be a full web application plus CLI for students and developers who want to understand, deploy, and observe applications through one accessible interface.
 
-InfraWatch should provide two first-class workflows:
+ClueStack should provide two first-class workflows:
 
 1. **Local Mode** — inspect, deploy, and observe supported local applications and local environments, including Docker and Minikube where appropriate.
 2. **GitHub Repository Mode** — connect a repository, inspect its files, analyze its stack, check readiness, review changes, and guide deployment to supported targets.
@@ -135,7 +135,7 @@ Current backend behavior:
 - live logs return `source="loki"`;
 - live alerts return `source="alertmanager"`;
 - metrics fallback can return `source="mock"` when fallback is enabled;
-- Redis failures behave like cache misses and should not take down InfraWatch.
+- Redis failures behave like cache misses and should not take down ClueStack.
 
 ### 2.6 Local infrastructure ownership
 
@@ -243,7 +243,7 @@ The web app and CLI should use consistent backend APIs and state models where th
 
 The web app is the primary visual interface.
 
-It should provide a polished, detailed dashboard inspired by the owner-provided Headlamp-style reference and the existing dark InfraWatch dashboard direction.
+It should provide a polished, detailed dashboard inspired by the owner-provided Headlamp-style reference and the existing dark ClueStack dashboard direction.
 
 The web app should support:
 
@@ -310,7 +310,7 @@ Purpose:
 - show workloads, pods, services, deployments, HPA, and resource status where available;
 - provide safe supported actions with target confirmation.
 
-InfraWatch should not claim to replace Headlamp or kubectl. It should surface a focused view for InfraWatch-managed or InfraWatch-observed applications.
+ClueStack should not claim to replace Headlamp or kubectl. It should surface a focused view for ClueStack-managed or ClueStack-observed applications.
 
 ### 5.4 Deployments
 
@@ -385,12 +385,12 @@ The first Repository Mode capability must be read-only.
 Flow:
 
 1. User provides a GitHub repository URL.
-2. InfraWatch validates the URL.
-3. InfraWatch confirms the repository is public for the initial version.
-4. InfraWatch performs bounded file inspection.
-5. InfraWatch detects evidence.
-6. InfraWatch produces a readiness report.
-7. InfraWatch recommends supported next steps.
+2. ClueStack validates the URL.
+3. ClueStack confirms the repository is public for the initial version.
+4. ClueStack performs bounded file inspection.
+5. ClueStack detects evidence.
+6. ClueStack produces a readiness report.
+7. ClueStack recommends supported next steps.
 
 Read-only analysis must not:
 
@@ -438,7 +438,7 @@ These capabilities require authentication, authorization, repository permissions
 
 ## 7. Deployment contract
 
-InfraWatch should start with a limited deployment contract. It should not begin with arbitrary repository builds.
+ClueStack should start with a limited deployment contract. It should not begin with arbitrary repository builds.
 
 ### 7.1 Container-image-first deployment
 
@@ -497,9 +497,9 @@ Local Mode may support resource-management actions only when scoped and confirme
 Examples:
 
 - deploy supported local workload;
-- delete an InfraWatch-managed workload;
+- delete a ClueStack-managed workload;
 - rollback a Kubernetes Deployment where rollout history supports it;
-- stop InfraWatch-managed app runtime resources;
+- stop ClueStack-managed app runtime resources;
 - install or remove observability only after confirmation.
 
 Every action must show:
@@ -516,7 +516,7 @@ Both the web app and CLI should use a shared state model.
 
 ### 8.1 Project
 
-Represents an application or repository tracked by InfraWatch.
+Represents an application or repository tracked by ClueStack.
 
 Fields:
 
@@ -650,12 +650,12 @@ Required additions:
 
 Source-of-truth boundaries:
 
-- PostgreSQL: InfraWatch project, deployment, report, and audit records.
+- PostgreSQL: ClueStack project, deployment, report, and audit records.
 - Prometheus: metrics source of truth.
 - Loki: logs source of truth.
 - Alertmanager: alert source of truth where available.
 - Redis: temporary cache only.
-- Grafana: visualization, not InfraWatch API source of truth.
+- Grafana: visualization, not ClueStack API source of truth.
 
 Unavailable data must be represented explicitly rather than inferred.
 
@@ -724,7 +724,7 @@ Each provider adapter must declare a capability matrix:
 - supports private repositories;
 - has free-tier limitations.
 
-Vercel and other hosting providers should be treated as separate integrations. InfraWatch must not assume that a hosted provider:
+Vercel and other hosting providers should be treated as separate integrations. ClueStack must not assume that a hosted provider:
 
 - behaves like Kubernetes;
 - exposes Prometheus metrics;
@@ -740,7 +740,7 @@ Provider support should remain honest: unavailable metrics, logs, alerts, health
 
 ### 12.1 Authentication and authorization
 
-Current InfraWatch has no user authentication or authorization model.
+Current ClueStack has no user authentication or authorization model.
 
 Before private repositories, file edits, Git writes, remote deployments, provider integrations, or shared usage are supported, vNext needs:
 
@@ -757,7 +757,7 @@ Requirements:
 - never store raw tokens in frontend state;
 - never print tokens in logs or reports;
 - store credentials only in an approved local secret store or explicitly documented secure local configuration;
-- separate application secrets from InfraWatch system credentials;
+- separate application secrets from ClueStack system credentials;
 - redact secret-like fields;
 - support credential deletion;
 - record credential changes as audit events without storing values.
@@ -792,7 +792,7 @@ Rollback must not be presented as available when the target does not support it.
 
 Repository inspection must not execute code.
 
-Before any build workflow exists, InfraWatch needs:
+Before any build workflow exists, ClueStack needs:
 
 - isolated build environment;
 - timeout;
@@ -804,7 +804,7 @@ Before any build workflow exists, InfraWatch needs:
 
 ## 13. Dashboard design direction
 
-The vNext dashboard should use the current dark InfraWatch visual direction and the owner-provided Headlamp-style reference as inspiration. This is a design direction, not evidence that the planned features already exist.
+The vNext dashboard should use the current dark ClueStack visual direction and the owner-provided Headlamp-style reference as inspiration. This is a design direction, not evidence that the planned features already exist.
 
 The same dashboard should support Local Mode and GitHub Repository Mode. Panels may be unavailable depending on mode, target, and integration capability.
 
@@ -907,7 +907,7 @@ Show:
 
 ## 14. Relationship to established tools
 
-InfraWatch should complement established tools. It should not claim to replace:
+ClueStack should complement established tools. It should not claim to replace:
 
 - Kubernetes;
 - kubectl;
@@ -923,7 +923,7 @@ InfraWatch should complement established tools. It should not claim to replace:
 - Kustomize;
 - Docker.
 
-InfraWatch should integrate with these tools where useful and provide a focused learning and workflow layer around supported deployments and observability evidence.
+ClueStack should integrate with these tools where useful and provide a focused learning and workflow layer around supported deployments and observability evidence.
 
 Competitive analysis and formal external project application strategy are intentionally deferred.
 
@@ -1050,7 +1050,7 @@ Deliver only where safe:
 5. What limits should apply to repository size, file count, and scan duration?
 6. Which GitHub permissions are acceptable for repository browsing, branches, commits, and pull requests?
 7. Which provider adapter should be evaluated first?
-8. How much raw log data should InfraWatch persist versus reference?
+8. How much raw log data should ClueStack persist versus reference?
 9. How should report export work without leaking sensitive data?
 10. Which operating systems and local Kubernetes runtimes should be officially supported?
 
@@ -1072,6 +1072,6 @@ The first vNext increment should not attempt:
 
 ## 19. Summary
 
-InfraWatch already has a local-first foundation: a React dashboard, FastAPI backend, Python CLI, Docker Compose stack, Minikube-oriented Kubernetes resources, Terraform foundation, Kustomize app resources, Helm-based Loki/Alloy path, PostgreSQL/JSON persistence, Redis metrics cache, Prometheus metrics, Loki logs, and Alertmanager alerts.
+ClueStack already has a local-first foundation: a React dashboard, FastAPI backend, Python CLI, Docker Compose stack, Minikube-oriented Kubernetes resources, Terraform foundation, Kustomize app resources, Helm-based Loki/Alloy path, PostgreSQL/JSON persistence, Redis metrics cache, Prometheus metrics, Loki logs, and Alertmanager alerts.
 
 vNext should evolve that foundation into a full web app plus CLI with two explicit workflows: Local Mode and GitHub Repository Mode. Both workflows should use shared project, deployment, report, and audit models; preserve honest telemetry source labeling; require approval for consequential actions; and integrate with established tools rather than claiming to replace them.

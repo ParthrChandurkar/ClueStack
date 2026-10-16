@@ -279,7 +279,7 @@ $script:StartedPortForwards = @()
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "InfraWatch Kubernetes observability stack" -ForegroundColor Green
+Write-Host "ClueStack Kubernetes observability stack" -ForegroundColor Green
 Write-Host ""
 
 if (-not (Test-CommandAvailable "kubectl")) {
@@ -395,7 +395,7 @@ Write-Info "Installing/upgrading Grafana Alloy"
 Assert-LastCommand "Grafana Alloy Helm release failed."
 
 if (-not $KeepFallback) {
-    Write-Info "Switching InfraWatch backend to strict Prometheus/Loki observability"
+    Write-Info "Switching ClueStack backend to strict Prometheus/Loki observability"
     $Patch = @{
         data = @{
             INFRAWATCH_ALLOW_MOCK_OBSERVABILITY = "false"
@@ -415,10 +415,10 @@ if (-not $KeepFallback) {
     }
 
     & kubectl rollout restart deployment/infrawatch-backend --namespace $Namespace
-    Assert-LastCommand "Could not restart the InfraWatch backend."
+    Assert-LastCommand "Could not restart the ClueStack backend."
 
     & kubectl rollout status deployment/infrawatch-backend --namespace $Namespace --timeout=240s
-    Assert-LastCommand "InfraWatch backend did not roll out after strict observability update."
+    Assert-LastCommand "ClueStack backend did not roll out after strict observability update."
 }
 
 Write-Info "Current observability pods"

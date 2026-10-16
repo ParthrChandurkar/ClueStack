@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" role="img" aria-labelledby="title desc">
-  <title id="title">InfraWatch infrastructure visibility illustration</title>
-  <desc id="desc">A geometric map of deployment workflow, local infrastructure, metrics, logs, alerts, and health signals around the InfraWatch symbol.</desc>
+  <title id="title">ClueStack infrastructure visibility illustration</title>
+  <desc id="desc">A geometric map of deployment workflow, local infrastructure, metrics, logs, alerts, and health signals around the ClueStack symbol.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop stop-color="#0c1b31"/>
@@ -48,7 +48,7 @@
     <circle cx="422" cy="249" r="10" fill="#e7f6ff"/>
     <circle cx="558" cy="249" r="10" fill="#e7f6ff"/>
     <circle cx="490" cy="367" r="10" fill="#e7f6ff"/>
-    <text x="490" y="405" fill="#eaf3ff" font-family="Inter, Segoe UI, Arial" font-size="24" font-weight="760" text-anchor="middle">InfraWatch</text>
+    <text x="490" y="405" fill="#eaf3ff" font-family="Inter, Segoe UI, Arial" font-size="24" font-weight="760" text-anchor="middle">ClueStack</text>
   </g>
   <g fill="#0d1726" stroke="#28445e">
     <rect x="206" y="102" width="138" height="72" rx="16"/>

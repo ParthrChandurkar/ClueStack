@@ -2,7 +2,7 @@
   "name": "infrawatch-dev-site",
   "version": "0.1.0",
   "private": true,
-  "description": "Static project website for InfraWatch.",
+  "description": "Static project website for the ClueStack Local Application Deployment & Observability Platform.",
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

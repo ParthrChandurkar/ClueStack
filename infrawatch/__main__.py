@@ -1,4 +1,4 @@
-"""Run the InfraWatch CLI with ``python -m infrawatch``."""
+"""Run the ClueStack CLI with ``python -m infrawatch``."""
 
 from .cli import main
 

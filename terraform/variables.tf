@@ -1,7 +1,7 @@
-# Input variables for local Kubernetes-only InfraWatch foundation resources.
+# Input variables for local Kubernetes-only ClueStack foundation resources.
 
 variable "namespace" {
-  description = "Kubernetes namespace for InfraWatch local resources."
+  description = "Kubernetes namespace for ClueStack local resources."
   type        = string
   default     = "infrawatch"
 }
@@ -19,7 +19,7 @@ variable "kube_context" {
 }
 
 variable "service_account_name" {
-  description = "ServiceAccount used by the InfraWatch backend."
+  description = "ServiceAccount used by the ClueStack backend."
   type        = string
   default     = "infrawatch-backend"
 }
@@ -31,67 +31,67 @@ variable "cluster_role_name" {
 }
 
 variable "cluster_role_binding_name" {
-  description = "ClusterRoleBinding connecting the read-only ClusterRole to the InfraWatch backend ServiceAccount."
+  description = "ClusterRoleBinding connecting the read-only ClusterRole to the ClueStack backend ServiceAccount."
   type        = string
   default     = "infrawatch-local-reader"
 }
 
 variable "role_name" {
-  description = "Namespace Role allowing InfraWatch to manage workloads only inside its namespace."
+  description = "Namespace Role allowing ClueStack to manage workloads only inside its namespace."
   type        = string
   default     = "infrawatch-deployer"
 }
 
 variable "role_binding_name" {
-  description = "RoleBinding connecting the namespace deployer Role to the InfraWatch backend ServiceAccount."
+  description = "RoleBinding connecting the namespace deployer Role to the ClueStack backend ServiceAccount."
   type        = string
   default     = "infrawatch-deployer"
 }
 
 variable "resource_quota_name" {
-  description = "ResourceQuota name for the InfraWatch namespace."
+  description = "ResourceQuota name for the ClueStack namespace."
   type        = string
   default     = "infrawatch-quota"
 }
 
 variable "backend_configmap_name" {
-  description = "ConfigMap name for non-secret InfraWatch backend runtime settings."
+  description = "ConfigMap name for non-secret ClueStack backend runtime settings."
   type        = string
   default     = "infrawatch-backend-config"
 }
 
 variable "resource_quota_requests_cpu" {
-  description = "Total requested CPU allowed in the InfraWatch namespace."
+  description = "Total requested CPU allowed in the ClueStack namespace."
   type        = string
   default     = "3"
 }
 
 variable "resource_quota_requests_memory" {
-  description = "Total requested memory allowed in the InfraWatch namespace."
+  description = "Total requested memory allowed in the ClueStack namespace."
   type        = string
   default     = "4Gi"
 }
 
 variable "resource_quota_limits_cpu" {
-  description = "Total CPU limits allowed in the InfraWatch namespace."
+  description = "Total CPU limits allowed in the ClueStack namespace."
   type        = string
   default     = "6"
 }
 
 variable "resource_quota_limits_memory" {
-  description = "Total memory limits allowed in the InfraWatch namespace."
+  description = "Total memory limits allowed in the ClueStack namespace."
   type        = string
   default     = "8Gi"
 }
 
 variable "resource_quota_pods" {
-  description = "Maximum pods allowed in the InfraWatch namespace."
+  description = "Maximum pods allowed in the ClueStack namespace."
   type        = string
   default     = "40"
 }
 
 variable "resource_quota_services" {
-  description = "Maximum services allowed in the InfraWatch namespace."
+  description = "Maximum services allowed in the ClueStack namespace."
   type        = string
   default     = "20"
 }
@@ -115,19 +115,19 @@ variable "allow_mock_observability" {
 }
 
 variable "prometheus_url" {
-  description = "Prometheus URL reachable from inside the InfraWatch namespace."
+  description = "Prometheus URL reachable from inside the ClueStack namespace."
   type        = string
   default     = "http://infrawatch-prometheus:9090"
 }
 
 variable "loki_url" {
-  description = "Loki URL reachable from inside the InfraWatch namespace."
+  description = "Loki URL reachable from inside the ClueStack namespace."
   type        = string
   default     = "http://infrawatch-loki-gateway"
 }
 
 variable "alertmanager_url" {
-  description = "Alertmanager URL reachable from inside the InfraWatch namespace."
+  description = "Alertmanager URL reachable from inside the ClueStack namespace."
   type        = string
   default     = "http://infrawatch-alertmanager:9093"
 }

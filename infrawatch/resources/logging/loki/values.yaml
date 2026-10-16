@@ -1,4 +1,4 @@
-# Helm values for Loki in the InfraWatch Kubernetes stack.
+# Helm values for Loki in the ClueStack Kubernetes stack.
 deploymentMode: SingleBinary
 
 loki:

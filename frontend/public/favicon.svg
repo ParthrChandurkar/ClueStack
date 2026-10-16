@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ClueStack">
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#091524" stroke="#2b4864" stroke-width="2"/>
+  <path d="M13 19h33M19 18l5-8h15l6 8" fill="#ffbd4a" stroke="#ffbd4a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="29" cy="34" r="15" fill="#081827" stroke="#5eead4" stroke-width="4"/>
+  <path d="m40 45 13 13" fill="none" stroke="#ffbd4a" stroke-width="6" stroke-linecap="round"/>
+  <path d="M18 35h6l4-7 5 12 4-6h5" fill="none" stroke="#e2fffb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

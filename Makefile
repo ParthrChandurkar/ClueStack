@@ -1,4 +1,4 @@
-# Developer and deployment commands for InfraWatch.
+# Developer and deployment commands for ClueStack.
 SHELL := /bin/sh
 
 K8S_NAMESPACE ?= infrawatch

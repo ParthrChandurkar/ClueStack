@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an improvement that fits InfraWatch's local-first scope.
+description: Suggest an improvement that fits ClueStack's local-first scope.
 title: "[Feature]: "
 labels:
   - enhancement
@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        InfraWatch is focused on local-first Kubernetes deployment and observability. Please avoid sharing secrets, credentials, or kubeconfig content.
+        ClueStack is focused on local-first Kubernetes deployment and observability. Please avoid sharing secrets, credentials, or kubeconfig content.
   - type: textarea
     id: problem
     attributes:
@@ -25,7 +25,7 @@ body:
   - type: textarea
     id: scope
     attributes:
-      label: Why this fits InfraWatch
+      label: Why this fits ClueStack
       description: Explain how this stays aligned with local-first Docker/Kubernetes observability.
     validations:
       required: true

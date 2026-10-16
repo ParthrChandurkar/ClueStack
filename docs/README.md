@@ -1,6 +1,6 @@
-# InfraWatch documentation
+# ClueStack documentation
 
-This directory contains the canonical project documentation for running, understanding, and contributing to InfraWatch.
+This directory contains the canonical project documentation for running, understanding, and contributing to ClueStack.
 
 ## Start here
 

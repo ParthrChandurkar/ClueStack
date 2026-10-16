@@ -1,4 +1,4 @@
-"""Runtime resource discovery for source and installed InfraWatch CLIs."""
+"""Runtime resource discovery for source and installed ClueStack CLIs."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class ResourceError(RuntimeError):
 
 
 def user_cache_root() -> Path:
-    """Return the InfraWatch CLI cache root without needing extra dependencies."""
+    """Return the ClueStack CLI cache root without needing extra dependencies."""
 
     override = os.environ.get("INFRAWATCH_RESOURCE_CACHE")
     if override:
@@ -69,7 +69,7 @@ def validate_runtime_root(root: Path) -> None:
     )
     missing = [str(path) for path in required if not path.exists()]
     if missing:
-        raise ResourceError("Missing InfraWatch runtime resources: " + ", ".join(missing))
+        raise ResourceError("Missing ClueStack runtime resources: " + ", ".join(missing))
 
 
 def _copy_tree(source, destination: Path) -> None:

@@ -1,4 +1,4 @@
-# LoadBalancer service exposing the InfraWatch dashboard.
+# LoadBalancer service exposing the ClueStack dashboard.
 apiVersion: v1
 kind: Service
 metadata:

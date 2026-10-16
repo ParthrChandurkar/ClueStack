@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Provisioned InfraWatch Kubernetes overview dashboard for pod CPU, memory, and restarts.",
+  "description": "Provisioned ClueStack Kubernetes overview dashboard for pod CPU, memory, and restarts.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -136,7 +136,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "InfraWatch Cluster Overview",
+  "title": "ClueStack Cluster Overview",
   "uid": "infrawatch-cluster-overview",
   "version": 1,
   "weekStart": ""

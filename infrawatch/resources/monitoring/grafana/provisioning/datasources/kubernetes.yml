@@ -1,4 +1,4 @@
-# Grafana datasource provisioning for InfraWatch on local Kubernetes.
+# Grafana datasource provisioning for ClueStack on local Kubernetes.
 apiVersion: 1
 
 datasources:

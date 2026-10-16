@@ -1,4 +1,4 @@
-"""FastAPI application factory for InfraWatch.
+"""FastAPI application factory for ClueStack.
 
 The factory pattern keeps tests isolated and makes production runtime wiring
 explicit for deployment platforms.
@@ -32,12 +32,12 @@ from app.services.reports import ReportService
 
 HTTP_REQUEST_COUNTER = Counter(
     "http_requests_total",
-    "HTTP requests served by an InfraWatch-compatible service.",
+    "HTTP requests served by a ClueStack-compatible service.",
     ["service", "method", "path", "status"],
 )
 HTTP_REQUEST_LATENCY = Histogram(
     "http_request_duration_seconds",
-    "HTTP request latency for an InfraWatch-compatible service.",
+    "HTTP request latency for a ClueStack-compatible service.",
     ["service", "method", "path"],
 )
 
@@ -49,7 +49,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title=active_settings.app_name,
         version=__version__,
-        description="Local-first Kubernetes deployment and observability platform.",
+        description="Local Application Deployment & Observability Platform.",
     )
 
     app.add_middleware(
@@ -110,12 +110,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def root() -> dict[str, str]:
         """Return a friendly API discovery message."""
 
-        return {"service": "InfraWatch API", "docs": "/docs", "health": "/healthz"}
+        return {"service": "ClueStack API", "docs": "/docs", "health": "/healthz"}
 
     @app.get("/metrics", include_in_schema=False)
     @app.get("/internal/metrics", include_in_schema=False)
     async def internal_metrics() -> Response:
-        """Expose Prometheus metrics for the InfraWatch API itself."""
+        """Expose Prometheus metrics for the ClueStack API itself."""
 
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

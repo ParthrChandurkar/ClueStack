@@ -100,7 +100,7 @@ function Stop-PortForwardProcess {
 
     $commandLine = $process.CommandLine
     if ($commandLine -notmatch "kubectl" -or $commandLine -notmatch "port-forward" -or $commandLine -notmatch $Namespace) {
-        Write-Warn "Skipping PID $ProcessId because it is not an InfraWatch kubectl port-forward process."
+        Write-Warn "Skipping PID $ProcessId because it is not a ClueStack kubectl port-forward process."
         return $false
     }
 
@@ -146,7 +146,7 @@ function Stop-KnownPortForwards {
     }
 
     if ($stopped -eq 0) {
-        Write-Warn "No tracked InfraWatch observability port-forwards were running."
+        Write-Warn "No tracked ClueStack observability port-forwards were running."
     }
 }
 
@@ -212,10 +212,10 @@ function Set-BackendFallback {
 
     if ((Invoke-NativeQuiet -Command "kubectl" -Arguments @("get", "deployment", "infrawatch-backend", "--namespace", $Namespace)) -eq 0) {
         & kubectl rollout restart deployment/infrawatch-backend --namespace $Namespace
-        Assert-LastCommand "Could not restart the InfraWatch backend."
+        Assert-LastCommand "Could not restart the ClueStack backend."
 
         & kubectl rollout status deployment/infrawatch-backend --namespace $Namespace --timeout=240s
-        Assert-LastCommand "InfraWatch backend did not roll out after fallback update."
+        Assert-LastCommand "ClueStack backend did not roll out after fallback update."
     }
 }
 
@@ -226,7 +226,7 @@ $PortForwardStatePath = Join-Path $StateDir "observability-port-forwards.json"
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "Stopping InfraWatch observability stack" -ForegroundColor Green
+Write-Host "Stopping ClueStack observability stack" -ForegroundColor Green
 Write-Host ""
 
 if (-not (Test-CommandAvailable "kubectl")) {
@@ -324,7 +324,7 @@ else {
 Set-BackendFallback
 
 Write-Host ""
-Write-Host "InfraWatch observability stack stopped." -ForegroundColor Green
+Write-Host "ClueStack observability stack stopped." -ForegroundColor Green
 
 if ($UninstallStack) {
     Write-Host "Reinstall it with:"

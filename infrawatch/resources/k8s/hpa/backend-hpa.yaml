@@ -1,4 +1,4 @@
-# Horizontal Pod Autoscaler for the InfraWatch backend API.
+# Horizontal Pod Autoscaler for the ClueStack backend API.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

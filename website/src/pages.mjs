@@ -22,17 +22,17 @@ export const pages = [
   {
     href: "index.html",
     nav: "Overview",
-    title: "InfraWatch - Deployment and infrastructure visibility",
+    title: "ClueStack - Every signal tells a story",
     description:
-      "InfraWatch brings deployment workflows, workload health, metrics, logs, and alerts into a unified local-first interface.",
+      "Local Application Deployment & Observability Platform for supported local developer workflows.",
     bodyClass: "home",
     content: `
       <section class="hero">
         <div class="container hero-shell">
           <div class="hero-copy">
-            <img class="hero-brand" src="assets/brand-lockup.png" alt="InfraWatch" width="760" height="201">
-            <h1>Deployment and infrastructure visibility in one place.</h1>
-            <p class="lead">InfraWatch is a local-first infrastructure and deployment visibility tool for developers, students, and SRE learners who want to run, inspect, and understand lightweight local applications.</p>
+            <img class="hero-brand" src="assets/logo.svg" alt="ClueStack" width="760" height="170">
+            <h1>Every signal tells a story.</h1>
+            <p class="lead">ClueStack is a Local Application Deployment &amp; Observability Platform that combines deployments, metrics, logs, alerts, and reports to help developers understand system behavior.</p>
             <div class="actions">
               <a class="button primary" href="docs-quick-start.html">Get Started</a>
               <a class="button" href="docs.html">Documentation</a>
@@ -40,7 +40,7 @@ export const pages = [
             </div>
             <p class="hero-note">v0.3.0 developer preview · Docker Compose and Minikube-oriented workflows · live telemetry when observability services are running</p>
           </div>
-          <div class="hero-visual signal-board" aria-label="InfraWatch workflow preview">
+          <div class="hero-visual signal-board" aria-label="ClueStack workflow preview">
             <div class="signal-board-header"><span>Local workflow</span><strong>CLI + Web App + Observability</strong></div>
             <div class="signal-lanes">
               <article><span>01</span><strong>Check</strong><p>doctor validates local prerequisites and service reachability.</p></article>
@@ -58,7 +58,7 @@ export const pages = [
           <div>
             <span class="eyebrow">Problem</span>
             <h2>Local deployment signals are scattered across commands, services, and dashboards.</h2>
-            <p>InfraWatch gives a single local-first surface for deployment status, workload readiness, metrics, logs, alerts, reports, and audit activity. It integrates with the tools that own those signals instead of pretending to replace them.</p>
+            <p>ClueStack gives a single local-first surface for deployment status, workload readiness, metrics, logs, alerts, reports, and audit activity. It integrates with the tools that own those signals instead of pretending to replace them.</p>
           </div>
           ${cards([
             ["Web application", "A React dashboard for deployments, workloads, metrics, logs, alerts, reports, demo/live states, and local activity."],
@@ -73,7 +73,7 @@ export const pages = [
         <div class="container">
           <div class="section-header wide">
             <span class="eyebrow">Explore the product</span>
-            <h2>Understand InfraWatch without leaving the website.</h2>
+            <h2>Understand ClueStack without leaving the website.</h2>
             <p>These pages document the actual implemented interfaces and clearly mark planned capabilities.</p>
           </div>
           ${docLinks([
@@ -91,12 +91,12 @@ export const pages = [
         <div class="container fit-grid">
           <div>
             <span class="eyebrow">How it fits together</span>
-            <h2>Interfaces share the same backend and local state model.</h2>
-            <p>The web application and CLI use the backend and repository layers to keep project, deployment, report, and audit concepts consistent. PostgreSQL is used when configured; JSON-backed repositories remain a local fallback path for supported state.</p>
+            <h2>Interfaces cover complementary parts of the local workflow.</h2>
+            <p>The CLI checks and reconciles supported local runtime resources. The web application uses FastAPI for project, deployment, report, audit, and observability data. A fully shared project workflow across both interfaces remains future work.</p>
           </div>
-          <div class="flow-diagram flow-diagram-detailed" aria-label="InfraWatch data flow">
-            <div>CLI</div><span></span><div>FastAPI</div><span></span><div>Kubernetes</div>
-            <div>Dashboard</div><span></span><div>Prometheus · Loki · Alertmanager</div><span></span><div>PostgreSQL / JSON</div>
+          <div class="flow-diagram flow-diagram-detailed" aria-label="ClueStack data flow">
+            <div>CLI</div><span></span><div>Local lifecycle tools</div><span></span><div>Kubernetes</div>
+            <div>Dashboard</div><span></span><div>FastAPI</div><span></span><div>Observability · PostgreSQL / JSON</div>
           </div>
         </div>
       </section>
@@ -112,9 +112,9 @@ export const pages = [
   {
     href: "product.html",
     nav: "Product",
-    title: "InfraWatch Product",
-    description: "Product overview for InfraWatch web app, CLI, Local Mode, and planned GitHub Repository Mode.",
-    content: page("Product", "InfraWatch is a web application plus CLI for local deployment visibility and observability.", `
+    title: "ClueStack Product",
+    description: "Product overview for ClueStack web app, CLI, Local Mode, and planned GitHub Repository Mode.",
+    content: page("Product", "ClueStack is a web application plus CLI for local deployment visibility and observability.", `
       <section><h2>Product surfaces</h2>${cards([
         ["Web Application", "The dashboard presents deployment state, workload and service health, metrics, logs, alerts, reports, and local activity. It talks to the FastAPI backend rather than calling infrastructure tools directly."],
         ["CLI", "The Python CLI provides environment diagnostics, local startup, runtime status, and safe stop operations for the supported local workflow."],
@@ -136,8 +136,8 @@ export const pages = [
   },
   {
     href: "web-app.html",
-    title: "InfraWatch Web Application",
-    description: "InfraWatch dashboard areas, backend sources, live data, and demo limitations.",
+    title: "ClueStack Web Application",
+    description: "ClueStack dashboard areas, backend sources, live data, and demo limitations.",
     content: page("Web Application", "The dashboard is the visual interface for local deployment and observability state.", `
       <section><h2>Dashboard areas</h2>${rows([
         ["Projects", "Project records are exposed through /projects, /projects/default-local, and related project-scoped history endpoints."],
@@ -163,13 +163,13 @@ export const pages = [
   },
   {
     href: "cli.html",
-    title: "InfraWatch CLI",
-    description: "Supported InfraWatch CLI commands, flags, prerequisites, and examples.",
+    title: "ClueStack CLI",
+    description: "Supported ClueStack CLI commands, flags, prerequisites, and examples.",
     content: page("CLI", "The Python CLI is the developer-facing interface for local diagnostics and lifecycle operations.", `
       <section><h2>Commands implemented today</h2>${rows([
         ["infrawatch doctor", "Checks local prerequisites, tooling, repository configuration, rendered manifests, Terraform formatting, and service reachability where applicable."],
-        ["infrawatch start", "Starts or reconciles the local Minikube, Terraform, Kustomize, and InfraWatch runtime workflow."],
-        ["infrawatch status", "Inspects the current Kubernetes runtime state for InfraWatch components and observability services."],
+        ["infrawatch start", "Starts or reconciles the local Minikube, Terraform, Kustomize, and ClueStack runtime workflow."],
+        ["infrawatch status", "Inspects the current Kubernetes runtime state for ClueStack components and observability services."],
         ["infrawatch stop", "Stops app runtime resources while preserving Minikube, Terraform foundation state, and PostgreSQL data by default."]
       ])}</section>
       <section><h2>Common examples</h2>${code(`infrawatch --version\ninfrawatch doctor\ninfrawatch start --namespace infrawatch\ninfrawatch start --install-observability\ninfrawatch start --strict-observability\ninfrawatch status\ninfrawatch stop\ninfrawatch stop --remove-observability`)}</section>
@@ -180,14 +180,14 @@ export const pages = [
         ["--timeout-seconds", "start and stop timeout control for rollout/deletion waits."],
         ["--install-observability", "start option that also runs the existing observability installer when supported."],
         ["--strict-observability", "start option that disables mock observability fallback after startup."],
-        ["--remove-observability", "stop option that also removes InfraWatch observability workloads; default stop preserves them."]
+        ["--remove-observability", "stop option that also removes ClueStack observability workloads; default stop preserves them."]
       ])}</section>
       <section><h2>Future CLI direction</h2><p>The planned direction is for CLI workflows to share project, deployment, report, and audit concepts with the web app. That work is in progress and should not be described as a complete GitHub repository workflow yet.</p></section>
     `),
   },
   {
     href: "local-mode.html",
-    title: "InfraWatch Local Mode",
+    title: "ClueStack Local Mode",
     description: "Current local-first operating model for Docker Compose and Minikube-oriented workflows.",
     content: page("Local Mode", "Local Mode is the current supported product path.", `
       <section><h2>What Local Mode does</h2>${cards([
@@ -201,13 +201,13 @@ export const pages = [
   },
   {
     href: "github-integration.html",
-    title: "InfraWatch GitHub Integration Roadmap",
+    title: "ClueStack GitHub Integration Roadmap",
     description: "Planned GitHub Repository Mode design and security boundaries.",
     content: page("GitHub Integration", "GitHub Repository Mode is a planned capability, not a shipped OAuth or repository-editing feature.", `
       <section><h2>Intended workflow</h2>${rows([
         ["Select repository", "Future users should be able to connect to or select a repository with explicit authorization."],
         ["Analyze source", "Read-only source analysis should inspect repository structure and detect technology stack and deployment hints before any build or deployment."],
-        ["Assess readiness", "InfraWatch should identify missing deployment configuration, unsupported patterns, and prerequisites."],
+        ["Assess readiness", "ClueStack should identify missing deployment configuration, unsupported patterns, and prerequisites."],
         ["Guide deployment", "The product should guide users toward supported targets and explain telemetry/rollback limitations per target."],
         ["Review changes", "Future write workflows may propose file changes through diffs before any branch, commit, or pull request."],
         ["Approve writes", "Branch, commit, and pull-request workflows must require explicit user approval and least-privilege permissions."]
@@ -223,9 +223,9 @@ export const pages = [
   {
     href: "technology-stack.html",
     nav: "Stack",
-    title: "InfraWatch Technology Stack",
-    description: "Technology roles in the InfraWatch implementation.",
-    content: page("Technology Stack", "InfraWatch combines a web app, API, CLI, local runtime, and observability stack.", `
+    title: "ClueStack Technology Stack",
+    description: "Technology roles in the ClueStack implementation.",
+    content: page("Technology Stack", "ClueStack combines a web app, API, CLI, local runtime, and observability stack.", `
       <section><h2>Implementation roles</h2>${rows([
         ["React and Vite", "Frontend application and build tooling for the dashboard."],
         ["FastAPI", "Backend API, service layer, deployment orchestration, and observability endpoints."],
@@ -254,10 +254,10 @@ export const pages = [
   {
     href: "docs.html",
     nav: "Docs",
-    title: "InfraWatch Documentation",
-    description: "Documentation hub for installing, running, configuring, and troubleshooting InfraWatch.",
+    title: "ClueStack Documentation",
+    description: "Documentation hub for installing, running, configuring, and troubleshooting ClueStack.",
     content: `
-      <section class="page-hero"><div class="container"><span class="eyebrow">Documentation</span><h1>Run and understand InfraWatch locally.</h1><p class="lead">Practical guides for setup, configuration, deployments, observability, troubleshooting, and product direction.</p></div></section>
+      <section class="page-hero"><div class="container"><span class="eyebrow">Documentation</span><h1>Run and understand ClueStack locally.</h1><p class="lead">Practical guides for setup, configuration, deployments, observability, troubleshooting, and product direction.</p></div></section>
       <section class="section docs-overview"><div class="container">
         ${docLinks([
           ["docs-quick-start.html", "Quick Start", "Fastest path through prerequisites, local install, doctor, start, status, and stop."],
@@ -274,7 +274,7 @@ export const pages = [
   },
   {
     href: "docs-quick-start.html",
-    title: "InfraWatch Quick Start",
+    title: "ClueStack Quick Start",
     description: "Quick start commands for Docker Compose, CLI, and local Kubernetes workflows.",
     content: page("Quick Start", "Start with diagnostics, then choose Docker Compose or the Minikube-oriented CLI path.", `
       <section><h2>Prerequisites</h2><ul><li>Docker Desktop or Docker Engine with Compose for Docker Compose.</li><li>Python 3.11+, Minikube, kubectl, Terraform, and Helm for local Kubernetes.</li><li>Node.js and npm only for frontend or website development.</li></ul></section>
@@ -293,9 +293,9 @@ export const pages = [
   },
   {
     href: "installation.html",
-    title: "InfraWatch Installation",
-    description: "InfraWatch local installation paths before PyPI publication.",
-    content: page("Installation", "InfraWatch v0.3.0 is documented as a local checkout or local wheel install, not a PyPI install.", `
+    title: "ClueStack Installation",
+    description: "ClueStack local installation paths before PyPI publication.",
+    content: page("Installation", "ClueStack v0.3.0 is documented as a local checkout or local wheel install, not a PyPI install.", `
       <section><h2>Editable local install</h2>${code(`git clone https://github.com/ParthrChandurkar/InfraWatch.git\ncd InfraWatch\npython -m pip install -e .\ninfrawatch --help`)}</section>
       <section><h2>Local wheel validation</h2>${code(`python -m pip install build\npython -m build\npython -m venv C:\\Temp\\infrawatch-wheel-test\nC:\\Temp\\infrawatch-wheel-test\\Scripts\\python.exe -m pip install .\\dist\\infrawatch-0.3.0-py3-none-any.whl\nC:\\Temp\\infrawatch-wheel-test\\Scripts\\infrawatch.exe --version`)}</section>
       <section><h2>Packaged runtime resources</h2><p>The Python package includes runtime Terraform, Kubernetes, monitoring, logging, and helper resources so the CLI can materialize local resources outside a repository checkout.</p></section>
@@ -303,8 +303,8 @@ export const pages = [
   },
   {
     href: "configuration.html",
-    title: "InfraWatch Configuration",
-    description: "Environment variables and local configuration used by InfraWatch.",
+    title: "ClueStack Configuration",
+    description: "Environment variables and local configuration used by ClueStack.",
     content: page("Configuration", "Configuration is environment-backed. Do not commit real secrets.", `
       <section><h2>Core settings</h2>${rows([
         ["COMPOSE_PROJECT_NAME", "Docker Compose project name."],
@@ -330,7 +330,7 @@ export const pages = [
   },
   {
     href: "deployments.html",
-    title: "InfraWatch Deployments",
+    title: "ClueStack Deployments",
     description: "Current deployment workflow, records, reports, execution modes, and limitations.",
     content: page("Deployments", "Deployment support currently focuses on local workflow visibility and controlled local execution modes.", `
       <section><h2>Backend endpoints</h2>${rows([
@@ -351,9 +351,9 @@ export const pages = [
   },
   {
     href: "observability.html",
-    title: "InfraWatch Observability",
+    title: "ClueStack Observability",
     description: "Metrics, logs, alerts, Grafana, and telemetry troubleshooting.",
-    content: page("Observability", "InfraWatch surfaces observability data from local tools when they are running and reachable.", `
+    content: page("Observability", "ClueStack surfaces observability data from local tools when they are running and reachable.", `
       <section><h2>Backend observability endpoints</h2>${rows([
         ["GET /metrics/{service}", "Queries Prometheus for service metrics and uses Redis as a short-TTL cache."],
         ["GET /workloads/{service}", "Reads Kubernetes workload health for a service."],
@@ -375,9 +375,9 @@ export const pages = [
   {
     href: "architecture.html",
     nav: "Architecture",
-    title: "InfraWatch Architecture",
-    description: "Architecture and component responsibilities for InfraWatch.",
-    content: page("Architecture", "InfraWatch is layered around two user interfaces, a FastAPI backend, persistence repositories, local deployment tooling, and observability backends.", `
+    title: "ClueStack Architecture",
+    description: "Architecture and component responsibilities for ClueStack.",
+    content: page("Architecture", "ClueStack is layered around two user interfaces, a FastAPI backend, persistence repositories, local deployment tooling, and observability backends.", `
       <section><h2>System layers</h2>${rows([
         ["Interfaces", "React web app and Python CLI."],
         ["Backend API", "FastAPI routes and service layer for deployments, projects, reports, audit logs, workloads, metrics, logs, and alerts."],
@@ -392,8 +392,8 @@ export const pages = [
   },
   {
     href: "docs-troubleshooting.html",
-    title: "InfraWatch Troubleshooting",
-    description: "Troubleshooting and safe cleanup guidance for InfraWatch.",
+    title: "ClueStack Troubleshooting",
+    description: "Troubleshooting and safe cleanup guidance for ClueStack.",
     content: page("Troubleshooting", "Use read-only diagnosis first. Avoid destructive cleanup unless you intentionally want to remove local state.", `
       <section><h2>Symptoms and safe checks</h2>${rows([
         ["Docker daemon unreachable", "Start Docker Desktop or Docker Engine, then rerun doctor. Compose and Minikube Docker-driver workflows need Docker."],
@@ -409,8 +409,8 @@ export const pages = [
   {
     href: "roadmap.html",
     nav: "Roadmap",
-    title: "InfraWatch Roadmap",
-    description: "Directional roadmap and current project status for InfraWatch.",
+    title: "ClueStack Roadmap",
+    description: "Directional roadmap and current project status for ClueStack.",
     content: page("Roadmap", "The roadmap is directional, not a fixed delivery schedule.", `
       <section><h2>Capability roadmap</h2>${rows([
         ["Core reliability", "Deployment/report consistency, clearer errors, stronger tests, fresh-machine validation, and safer startup/stop behavior."],
@@ -429,45 +429,45 @@ export const pages = [
   },
   {
     href: "releases.html",
-    title: "InfraWatch Releases",
-    description: "InfraWatch release and version history.",
+    title: "ClueStack Releases",
+    description: "ClueStack release and version history.",
     content: page("Releases", "Release statements here are limited to verified repository evidence.", `
-      <section><h2>Latest verified tag</h2><p>The local repository contains the tag <strong>v0.3.0</strong>. The Python package metadata in this checkout declares version <strong>0.3.0</strong>.</p><p><a class="button" href="https://github.com/ParthrChandurkar/InfraWatch/releases/tag/v0.3.0">Open GitHub release</a></p></section>
+      <section><h2>Latest verified tag</h2><p>The local repository contains the tag <strong>v0.3.0</strong>. That developer preview was published under the project's former InfraWatch name. The Python package metadata in this checkout declares version <strong>0.3.0</strong>.</p><p><a class="button" href="https://github.com/ParthrChandurkar/InfraWatch/releases/tag/v0.3.0">Open GitHub release</a></p></section>
       <section><h2>Version scope</h2><p>v0.3.0 is a developer preview for local-first usage. It is not presented as a stable production release, hosted SaaS release, or PyPI publication.</p></section>
     `),
   },
   {
     href: "community.html",
     nav: "Contributing",
-    title: "InfraWatch Community",
-    description: "Contribution, governance, license, and security resources for InfraWatch.",
+    title: "ClueStack Community",
+    description: "Contribution, governance, license, and security resources for ClueStack.",
     content: page("Contributing", "Contribution paths are repository-based. No private maintainer email, sponsor program, or community size is invented here.", `
       <section><h2>Contributing</h2><p>Contributors should use focused pull requests, include validation results, and update documentation when behavior changes.</p><p><a href="https://github.com/ParthrChandurkar/InfraWatch/blob/main/CONTRIBUTING.md">Read CONTRIBUTING.md</a></p></section>
       <section><h2>Maintainers</h2><p>The local maintainer file lists Parth Chandurkar as maintainer. See <a href="https://github.com/ParthrChandurkar/InfraWatch/blob/main/MAINTAINERS.md">MAINTAINERS.md</a>.</p></section>
       <section><h2>Security</h2><p>Use GitHub private vulnerability reporting for security vulnerabilities when available. Do not publish exploitable details, tokens, kubeconfig contents, or private logs in public issues.</p></section>
-      <section><h2>License</h2><p>InfraWatch is licensed under the Apache License 2.0. Review the repository <a href="https://github.com/ParthrChandurkar/InfraWatch/blob/main/LICENSE">LICENSE</a> for the full license text.</p></section>
+      <section><h2>License</h2><p>ClueStack is licensed under the Apache License 2.0. Review the repository <a href="https://github.com/ParthrChandurkar/InfraWatch/blob/main/LICENSE">LICENSE</a> for the full license text.</p></section>
     `),
   },
   {
     href: "brand.html",
-    title: "InfraWatch Brand",
-    description: "InfraWatch logo and brand design notes.",
-    content: page("Brand note", "The website uses the attached InfraWatch logo as its primary visual identity.", `
-      <section><h2>Logo usage</h2><p>The current website uses the provided InfraWatch logo and wordmark as the brand source of truth. The navigation, favicon, homepage hero, and footer reuse logo-derived assets.</p></section>
-      <section><h2>Palette</h2><div class="badge-list"><span class="badge">Deep navy #071126</span><span class="badge">Panel blue #0e1a31</span><span class="badge">Infra blue #286cff</span><span class="badge">Signal blue #1ea7ff</span><span class="badge">Signal gold #ffb51d</span></div></section>
+    title: "ClueStack Brand",
+    description: "ClueStack logo and brand design notes.",
+    content: page("Brand note", "ClueStack uses an investigative lens and connected signals as its visual identity.", `
+      <section><h2>Logo usage</h2><p>The compact mark combines a magnifying lens, signal trace, connected nodes, and a restrained detective-hat cue. The navigation, favicon, homepage hero, dashboard, and footer reuse the same SVG identity.</p></section>
+      <section><h2>Palette</h2><div class="badge-list"><span class="badge">Midnight navy #07111f</span><span class="badge">Panel blue #132842</span><span class="badge">Signal teal #5eead4</span><span class="badge">Trace blue #22a6d5</span><span class="badge">Evidence amber #ffbd4a</span></div></section>
     `),
   },
   {
     href: "404.html",
-    title: "Page not found - InfraWatch",
-    description: "The requested InfraWatch website page was not found.",
+    title: "Page not found - ClueStack",
+    description: "The requested ClueStack website page was not found.",
     content: `<section class="page-hero"><div class="container"><span class="eyebrow">404</span><h1>Page not found.</h1><p class="lead">Return to the home page or documentation hub.</p><div class="actions"><a class="button primary" href="index.html">Home</a><a class="button" href="docs.html">Documentation</a></div></div></section>`,
   },
 ];
 
 function page(title, intro, body) {
   return `
-    <section class="page-hero"><div class="container"><span class="eyebrow">InfraWatch</span><h1>${title}</h1><p class="lead">${intro}</p></div></section>
+    <section class="page-hero"><div class="container"><span class="eyebrow">ClueStack</span><h1>${title}</h1><p class="lead">${intro}</p></div></section>
     <div class="container page-grid">
       <aside class="side-nav" aria-label="Page sections">
         <a href="product.html">Product</a>

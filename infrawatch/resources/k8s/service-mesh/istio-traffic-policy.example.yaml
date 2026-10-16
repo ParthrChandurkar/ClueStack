@@ -1,4 +1,4 @@
-# Optional Istio traffic policy for managed services deployed by InfraWatch.
+# Optional Istio traffic policy for managed services deployed by ClueStack.
 # Apply this only after Istio is installed and sidecar injection is enabled.
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule

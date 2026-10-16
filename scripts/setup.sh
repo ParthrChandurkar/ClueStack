@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Linux-friendly InfraWatch setup for local Kubernetes.
+# Linux-friendly ClueStack setup for local Kubernetes.
 #
 # This script checks prerequisites, applies the Terraform-managed foundation,
 # creates the local Kubernetes secret when missing, and applies the existing
-# InfraWatch application manifests. It does not install software silently and
+# ClueStack application manifests. It does not install software silently and
 # never deletes or resets the user's Kubernetes cluster.
 
 set -euo pipefail
@@ -31,7 +31,7 @@ WARN="⚠"
 
 usage() {
   cat <<'EOF'
-InfraWatch Linux setup
+ClueStack Linux setup
 
 Usage:
   scripts/setup.sh [options]
@@ -192,7 +192,7 @@ if [[ "${AUTO_START_MINIKUBE}" == "true" ]]; then
   START_MINIKUBE=true
 fi
 
-log "InfraWatch Linux Setup"
+log "ClueStack Linux Setup"
 log "----------------------"
 
 MISSING_REQUIRED=0
@@ -206,7 +206,7 @@ fi
 
 require_command python3 "Install Python 3 for helper commands and local development."
 require_command kubectl "Install kubectl to communicate with the local Kubernetes cluster."
-require_command terraform "Install Terraform 1.6+ to apply the InfraWatch local foundation."
+require_command terraform "Install Terraform 1.6+ to apply the ClueStack local foundation."
 optional_command docker "Install Docker if your local cluster runtime or Docker Compose stack needs it."
 optional_command minikube "Optional; install it if Minikube is your local Kubernetes runtime."
 optional_command kind "Optional; install it if kind is your local Kubernetes runtime."
@@ -284,14 +284,14 @@ if [[ "${FOUNDATION_ONLY}" == "true" || "${SKIP_K8S}" == "true" ]]; then
 fi
 
 log ""
-log "Applying InfraWatch Kubernetes manifests"
+log "Applying ClueStack Kubernetes manifests"
 kubectl apply -k "${K8S_DIR}"
 kubectl rollout status statefulset/infrawatch-postgres --namespace "${NAMESPACE}" --timeout=240s
 kubectl rollout status deployment/infrawatch-redis --namespace "${NAMESPACE}" --timeout=180s
 kubectl rollout status deployment/infrawatch-backend --namespace "${NAMESPACE}" --timeout=240s
 kubectl rollout status deployment/infrawatch-frontend --namespace "${NAMESPACE}" --timeout=240s
 
-pass "InfraWatch local Kubernetes setup completed"
+pass "ClueStack local Kubernetes setup completed"
 log ""
 log "Useful commands:"
 log "  kubectl get pods,svc --namespace ${NAMESPACE}"

@@ -1,4 +1,4 @@
-# ClusterIP service exposing the InfraWatch backend inside Kubernetes.
+# ClusterIP service exposing the ClueStack backend inside Kubernetes.
 apiVersion: v1
 kind: Service
 metadata:

@@ -1,4 +1,4 @@
-"""Tiny local Alertmanager webhook receiver for InfraWatch demos.
+"""Tiny local Alertmanager webhook receiver for ClueStack demos.
 
 Run:
     python scripts/alert_receiver.py
@@ -29,7 +29,7 @@ class AlertHandler(BaseHTTPRequestHandler):
             payload = json.dumps(parsed, indent=2)
         except json.JSONDecodeError:
             pass
-        print("\n=== InfraWatch Alert Received ===")
+        print("\n=== ClueStack Alert Received ===")
         print(payload)
         self.send_response(200)
         self.end_headers()
@@ -45,7 +45,7 @@ def main() -> None:
     """Run the receiver on port 9999."""
 
     server = HTTPServer(("0.0.0.0", 9999), AlertHandler)
-    print("InfraWatch alert receiver listening on http://0.0.0.0:9999/alerts")
+    print("ClueStack alert receiver listening on http://0.0.0.0:9999/alerts")
     server.serve_forever()
 
 

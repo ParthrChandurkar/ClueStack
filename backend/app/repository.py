@@ -70,7 +70,7 @@ class AuditLogRepository(Protocol):
 
 
 class ProjectRepository(Protocol):
-    """Persistence contract for InfraWatch project metadata."""
+    """Persistence contract for ClueStack project metadata."""
 
     def list(self) -> list[ProjectRecord]:
         """Return all known projects."""
@@ -238,7 +238,7 @@ class FileAuditLogRepository:
 
 
 class FileProjectRepository:
-    """Thread-safe JSON-backed repository for InfraWatch projects."""
+    """Thread-safe JSON-backed repository for ClueStack projects."""
 
     DEFAULT_LOCAL_SLUG = "default-local"
 
@@ -445,7 +445,7 @@ def build_default_local_project() -> ProjectRecord:
         source_type=ProjectSourceType.manual,
         repository_url=None,
         default_namespace="infrawatch",
-        description="Default project for local InfraWatch deployments.",
+        description="Default project for local ClueStack deployments.",
         created_at=now,
         updated_at=now,
     )
@@ -489,7 +489,7 @@ def build_report_repository(database_url: str | None, reports_file: str) -> Repo
 
 
 class PostgresProjectRepository:
-    """PostgreSQL-backed repository for InfraWatch project metadata."""
+    """PostgreSQL-backed repository for ClueStack project metadata."""
 
     def __init__(self, database_url: str) -> None:
         self._database_url = database_url
@@ -840,7 +840,7 @@ class PostgresDeploymentRepository:
         return existing
 
     def _ensure_schema(self) -> None:
-        """Create the small persistence schema used by InfraWatch."""
+        """Create the small persistence schema used by ClueStack."""
 
         with self._connect() as connection, connection.cursor() as cursor:
             cursor.execute(

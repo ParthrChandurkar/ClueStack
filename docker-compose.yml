@@ -1,4 +1,4 @@
-# Local development stack for InfraWatch.
+# Local development stack for ClueStack.
 services:
   backend:
     build:

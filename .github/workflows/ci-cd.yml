@@ -1,5 +1,5 @@
-# CI/CD pipeline for validating, building, publishing, and deploying InfraWatch.
-name: InfraWatch CI/CD
+# CI/CD pipeline for validating, building, publishing, and deploying ClueStack.
+name: ClueStack CI/CD
 
 on:
   workflow_dispatch:
@@ -193,7 +193,7 @@ jobs:
               repo: context.repo.repo,
               sha: context.sha,
               state: "success",
-              context: "InfraWatch Kubernetes deployment",
+              context: "ClueStack Kubernetes deployment",
               description: "Skipped: KUBE_CONFIG_B64 is not configured."
             });
 
@@ -207,7 +207,7 @@ jobs:
               repo: context.repo.repo,
               sha: context.sha,
               state: "pending",
-              context: "InfraWatch Kubernetes deployment",
+              context: "ClueStack Kubernetes deployment",
               description: "Published images are being rolled out to Kubernetes."
             });
 
@@ -278,10 +278,10 @@ jobs:
               repo: context.repo.repo,
               sha: context.sha,
               state,
-              context: "InfraWatch Kubernetes deployment",
+              context: "ClueStack Kubernetes deployment",
               description: state === "success"
-                ? "InfraWatch Kubernetes rollout completed."
-                : "InfraWatch Kubernetes rollout failed."
+                ? "ClueStack Kubernetes rollout completed."
+                : "ClueStack Kubernetes rollout failed."
             });
 
   deploy-local-minikube:

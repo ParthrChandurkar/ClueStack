@@ -24,7 +24,7 @@ spec:
           command:
             - /bin/sh
             - -c
-            - echo "intentional crash for InfraWatch demo"; exit 1
+            - echo "intentional crash for ClueStack demo"; exit 1
           resources:
             requests:
               cpu: 25m

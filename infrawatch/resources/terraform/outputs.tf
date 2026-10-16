@@ -1,12 +1,12 @@
 # Useful values from the Terraform-managed local Kubernetes foundation.
 
 output "namespace_name" {
-  description = "Namespace managed by Terraform for InfraWatch."
+  description = "Namespace managed by Terraform for ClueStack."
   value       = kubernetes_namespace_v1.infrawatch.metadata[0].name
 }
 
 output "service_account_name" {
-  description = "ServiceAccount used by the InfraWatch backend."
+  description = "ServiceAccount used by the ClueStack backend."
   value       = kubernetes_service_account_v1.backend.metadata[0].name
 }
 
@@ -21,17 +21,17 @@ output "cluster_role_binding_name" {
 }
 
 output "role_name" {
-  description = "Namespace-scoped Role used for InfraWatch workload management."
+  description = "Namespace-scoped Role used for ClueStack workload management."
   value       = kubernetes_role_v1.deployer.metadata[0].name
 }
 
 output "role_binding_name" {
-  description = "Namespace-scoped RoleBinding used for InfraWatch workload management."
+  description = "Namespace-scoped RoleBinding used for ClueStack workload management."
   value       = kubernetes_role_binding_v1.deployer.metadata[0].name
 }
 
 output "resource_quota_name" {
-  description = "ResourceQuota limiting local InfraWatch namespace usage."
+  description = "ResourceQuota limiting local ClueStack namespace usage."
   value       = kubernetes_resource_quota_v1.infrawatch.metadata[0].name
 }
 

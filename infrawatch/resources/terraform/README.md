@@ -1,6 +1,6 @@
-# InfraWatch Terraform Foundation
+# ClueStack Terraform Foundation
 
-Terraform provisions the local Kubernetes foundation that InfraWatch needs before the application manifests are applied.
+Terraform provisions the local Kubernetes foundation that ClueStack needs before the application manifests are applied.
 
 This layer is intentionally local-only:
 
@@ -21,11 +21,11 @@ Terraform owns these foundational resources:
 | Resource | Purpose |
 |---|---|
 | Namespace | Dedicated `infrawatch` boundary |
-| ServiceAccount | Identity used by the InfraWatch backend pod |
+| ServiceAccount | Identity used by the ClueStack backend pod |
 | ClusterRole | Narrow read access for pods, nodes, events, pod logs, deployments, replicasets, and HPAs |
-| ClusterRoleBinding | Binds the read-only ClusterRole to the InfraWatch ServiceAccount |
-| Role | Namespace-scoped permissions to create/update/delete InfraWatch-managed app Deployments, Services, Pods, and HPAs |
-| RoleBinding | Binds the namespace Role to the InfraWatch ServiceAccount |
+| ClusterRoleBinding | Binds the read-only ClusterRole to the ClueStack ServiceAccount |
+| Role | Namespace-scoped permissions to create/update/delete ClueStack-managed app Deployments, Services, Pods, and HPAs |
+| RoleBinding | Binds the namespace Role to the ClueStack ServiceAccount |
 | ResourceQuota | Keeps local laptop resource usage bounded |
 | ConfigMap | Non-secret backend runtime configuration, including Prometheus/Loki URLs and Redis cache settings |
 
@@ -61,7 +61,7 @@ terraform plan
 terraform apply
 ```
 
-The provided setup scripts run safe `terraform import` checks before `terraform apply`. This lets Terraform adopt older InfraWatch resources that may already exist from the previous Kustomize-only workflow.
+The provided setup scripts run safe `terraform import` checks before `terraform apply`. This lets Terraform adopt older ClueStack resources that may already exist from the previous Kustomize-only workflow.
 
 If you want to pin a specific context:
 
@@ -108,7 +108,7 @@ kubectl apply -k ../k8s
 
 Terraform owns the `infrawatch` namespace. Kustomize owns application resources inside that namespace.
 
-Because Kubernetes namespace deletion cascades to namespaced resources, do not run raw `terraform destroy` while InfraWatch application or observability workloads are still installed. That can delete Kustomize/Helm-owned workloads as a side effect of namespace deletion.
+Because Kubernetes namespace deletion cascades to namespaced resources, do not run raw `terraform destroy` while ClueStack application or observability workloads are still installed. That can delete Kustomize/Helm-owned workloads as a side effect of namespace deletion.
 
 Use the safe full-cleanup workflow from the repository root:
 
@@ -123,7 +123,7 @@ That script:
 3. runs `terraform destroy` only after those workloads have been explicitly removed;
 4. leaves the Minikube/kind/k3d cluster itself untouched unless you also pass `-StopMinikube`.
 
-Raw Terraform destroy is only safe when no Kustomize/Helm-owned InfraWatch workloads remain in the namespace:
+Raw Terraform destroy is only safe when no Kustomize/Helm-owned ClueStack workloads remain in the namespace:
 
 ```powershell
 terraform destroy

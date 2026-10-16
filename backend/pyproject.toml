@@ -1,4 +1,4 @@
-# Python tooling configuration for the InfraWatch backend.
+# Python tooling configuration for the ClueStack backend.
 [tool.ruff]
 line-length = 120
 target-version = "py312"

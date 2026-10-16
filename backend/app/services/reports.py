@@ -1,4 +1,4 @@
-"""Deployment report history service for InfraWatch."""
+"""Deployment report history service for ClueStack."""
 
 from app.repository import ReportRepository
 from app.schemas import DeploymentReportCreate, DeploymentReportRecord

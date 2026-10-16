@@ -1,14 +1,14 @@
-# Getting Started with InfraWatch
+# Getting Started with ClueStack
 
-This guide is for new users who want to run InfraWatch locally and understand what it can do.
+This guide is for new users who want to run ClueStack locally and understand what it can do.
 
-InfraWatch is a local-first Kubernetes deployment and observability platform. It is useful for testing lightweight containerized apps, learning SRE workflows, and viewing logs, metrics, health, and rollout status without using a paid cloud account.
+ClueStack is a local-first Kubernetes deployment and observability platform. It is useful for testing lightweight containerized apps, learning SRE workflows, and viewing logs, metrics, health, and rollout status without using a paid cloud account.
 
 ---
 
 ## 1. Start with Docker Compose
 
-Use Docker Compose first. It starts the InfraWatch dashboard, API, database, Redis cache, Prometheus, Grafana, Loki, Grafana Alloy, and Alertmanager.
+Use Docker Compose first. It starts the ClueStack dashboard, API, database, Redis cache, Prometheus, Grafana, Loki, Grafana Alloy, and Alertmanager.
 
 Fastest path:
 
@@ -61,7 +61,7 @@ Open:
 
 | Tool | URL |
 |---|---|
-| InfraWatch dashboard | http://localhost:3000 |
+| ClueStack dashboard | http://localhost:3000 |
 | FastAPI docs | http://localhost:8000/docs |
 | Grafana | http://localhost:3001 |
 | Prometheus | http://localhost:9090 |
@@ -75,7 +75,7 @@ Grafana login uses the values from your local `.env` file.
 
 ## 2. Try the Python CLI foundation
 
-InfraWatch includes an installable Python CLI foundation. From the project root:
+ClueStack includes an installable Python CLI foundation. From the project root:
 
 ```powershell
 python -m pip install -e .
@@ -84,7 +84,7 @@ infrawatch --version
 infrawatch doctor
 ```
 
-To test the installable package without relying on the repository checkout, first clone or download this repository, then build a local wheel. This is the current pre-PyPI workflow; InfraWatch is not published to PyPI yet.
+To test the installable package without relying on the repository checkout, first clone or download this repository, then build a local wheel. This is the current pre-PyPI workflow; ClueStack is not published to PyPI yet.
 
 ```powershell
 python -m pip install build
@@ -98,7 +98,7 @@ infrawatch doctor
 
 The current package version is `0.3.0`, so the built wheel is expected to look like `dist/infrawatch-0.3.0-py3-none-any.whl`. The wildcard command above keeps the install step understandable when the version changes. The locally built wheel contains the runtime Terraform and Kubernetes resources used by the CLI.
 
-`infrawatch doctor` checks local readiness: Python, Docker, Docker Compose, kubectl, Minikube, Terraform, Kustomize rendering, Kubernetes context, and the InfraWatch namespace when a cluster is reachable. It can still report Kubernetes or Minikube warnings when Docker is available but the cluster is stopped or the Kubernetes API is unreachable.
+`infrawatch doctor` checks local readiness: Python, Docker, Docker Compose, kubectl, Minikube, Terraform, Kustomize rendering, Kubernetes context, and the ClueStack namespace when a cluster is reachable. It can still report Kubernetes or Minikube warnings when Docker is available but the cluster is stopped or the Kubernetes API is unreachable.
 
 Start the local Kubernetes stack:
 
@@ -106,7 +106,7 @@ Start the local Kubernetes stack:
 infrawatch start
 ```
 
-This is the preferred local Kubernetes path. It uses Minikube, Terraform, Kustomize, kubectl, and the existing repository configuration. It is idempotent: running it again reconciles the same InfraWatch-owned resources instead of deleting or recreating the cluster.
+This is the preferred local Kubernetes path. It uses Minikube, Terraform, Kustomize, kubectl, and the existing repository configuration. It is idempotent: running it again reconciles the same ClueStack-owned resources instead of deleting or recreating the cluster.
 
 If you also want the existing observability installer to run on Windows:
 
@@ -114,15 +114,15 @@ If you also want the existing observability installer to run on Windows:
 infrawatch start --install-observability
 ```
 
-Without that flag, `start` reconciles the core InfraWatch application stack and `status` reports observability components if they are already installed.
+Without that flag, `start` reconciles the core ClueStack application stack and `status` reports observability components if they are already installed.
 
-After InfraWatch is deployed to Kubernetes, check the running components:
+After ClueStack is deployed to Kubernetes, check the running components:
 
 ```powershell
 infrawatch status
 ```
 
-`infrawatch status` is different from `doctor`: it checks the current runtime state of the InfraWatch namespace and components such as backend, frontend, PostgreSQL, Redis, Prometheus, Grafana, Loki, and Alertmanager. It requires a reachable Kubernetes API to report workload state accurately.
+`infrawatch status` is different from `doctor`: it checks the current runtime state of the ClueStack namespace and components such as backend, frontend, PostgreSQL, Redis, Prometheus, Grafana, Loki, and Alertmanager. It requires a reachable Kubernetes API to report workload state accurately.
 
 To stop the Kubernetes app stack without destroying the Minikube cluster or Terraform foundation:
 
@@ -130,7 +130,7 @@ To stop the Kubernetes app stack without destroying the Minikube cluster or Terr
 infrawatch stop
 ```
 
-This removes InfraWatch app resources managed by the main Kustomize stack: backend, frontend, PostgreSQL, Redis, HPA, and app ConfigMaps. It keeps the Terraform-owned namespace, RBAC, ResourceQuota, ServiceAccount, backend ConfigMap, Terraform state, Minikube cluster, PostgreSQL PVC data, and generated `infrawatch-secrets` Secret intact. The Secret is preserved because the retained PostgreSQL data needs the same password after restart. Running `infrawatch start` again recreates the app stack on top of the same foundation.
+This removes ClueStack app resources managed by the main Kustomize stack: backend, frontend, PostgreSQL, Redis, HPA, and app ConfigMaps. It keeps the Terraform-owned namespace, RBAC, ResourceQuota, ServiceAccount, backend ConfigMap, Terraform state, Minikube cluster, PostgreSQL PVC data, and generated `infrawatch-secrets` Secret intact. The Secret is preserved because the retained PostgreSQL data needs the same password after restart. Running `infrawatch start` again recreates the app stack on top of the same foundation.
 
 By default, observability workloads are preserved so Prometheus/Grafana/Loki/Alloy can continue to exist across app restarts. To intentionally remove them too:
 
@@ -186,7 +186,7 @@ Windows PowerShell Minikube path:
 .\scripts\start-k8s.ps1
 ```
 
-This is the script-backed path used by the CLI workflow. It deploys InfraWatch into a local Minikube cluster and prints the dashboard URL. The script uses a 3072 MB Minikube default so it works on Docker Desktop installs with limited memory.
+This is the script-backed path used by the CLI workflow. It deploys ClueStack into a local Minikube cluster and prints the dashboard URL. The script uses a 3072 MB Minikube default so it works on Docker Desktop installs with limited memory.
 
 What is real in this mode:
 
@@ -200,7 +200,7 @@ What still uses fallback data by default:
 
 - metrics/log responses, until Prometheus, Loki, and Grafana Alloy are installed.
 
-If fallback remains enabled, InfraWatch uses `source: mock` only when required Prometheus/Loki data is missing. A service with real Prometheus CPU, memory, and request-rate data but zero 5xx errors should report `source: prometheus` with a zero error-rate series.
+If fallback remains enabled, ClueStack uses `source: mock` only when required Prometheus/Loki data is missing. A service with real Prometheus CPU, memory, and request-rate data but zero 5xx errors should report `source: prometheus` with a zero error-rate series.
 
 Redis does not replace Prometheus. It caches only real Prometheus metric responses for a few seconds. If Redis is down, the backend bypasses Redis and queries Prometheus directly.
 
@@ -261,7 +261,7 @@ The CLI equivalent for stopping only the app runtime while preserving Terraform 
 infrawatch stop
 ```
 
-To delete the InfraWatch Kubernetes namespace, secrets, and local PVC data safely:
+To delete the ClueStack Kubernetes namespace, secrets, and local PVC data safely:
 
 ```powershell
 .\scripts\stop-k8s.ps1 -RemoveData
@@ -287,7 +287,7 @@ kubectl create secret generic infrawatch-secrets `
 kubectl apply -k k8s
 ```
 
-Then open InfraWatch from Kubernetes:
+Then open ClueStack from Kubernetes:
 
 ```powershell
 minikube service infrawatch-frontend --namespace infrawatch
@@ -308,13 +308,13 @@ Port: 80
 
 In Demo Mode, this creates a simulated record.
 
-In Kubernetes mode, InfraWatch applies a real Kubernetes Deployment and Service.
+In Kubernetes mode, ClueStack applies a real Kubernetes Deployment and Service.
 
 ---
 
-## 6. What InfraWatch is not yet
+## 6. What ClueStack is not yet
 
-InfraWatch is not a full SaaS platform yet.
+ClueStack is not a full SaaS platform yet.
 
 Current limitations:
 

@@ -1,6 +1,6 @@
-# InfraWatch Architecture
+# ClueStack Architecture
 
-InfraWatch has two explicit modes.
+ClueStack has two explicit modes.
 
 ## CLI boundary
 
@@ -46,7 +46,7 @@ infrawatch stop
   -> verify Minikube is still running
 ```
 
-The default stop path removes app-owned Kustomize runtime resources and leaves the Minikube cluster, Terraform state, namespace, RBAC, ResourceQuota, ServiceAccount, backend runtime ConfigMap, PostgreSQL PVC data, and generated `infrawatch-secrets` Secret intact. The Secret is preserved because the retained database volume expects the same password on restart. Observability workloads are preserved by default. `infrawatch stop --remove-observability` explicitly removes the InfraWatch observability manifests and Helm releases while still preserving the Terraform foundation.
+The default stop path removes app-owned Kustomize runtime resources and leaves the Minikube cluster, Terraform state, namespace, RBAC, ResourceQuota, ServiceAccount, backend runtime ConfigMap, PostgreSQL PVC data, and generated `infrawatch-secrets` Secret intact. The Secret is preserved because the retained database volume expects the same password on restart. Observability workloads are preserved by default. `infrawatch stop --remove-observability` explicitly removes the ClueStack observability manifests and Helm releases while still preserving the Terraform foundation.
 
 ## Packaged runtime resources
 
@@ -250,7 +250,7 @@ Traffic/load
   -> new Pods
 ```
 
-InfraWatch includes an HPA for `deployment/infrawatch-backend`:
+ClueStack includes an HPA for `deployment/infrawatch-backend`:
 
 - min replicas: 1
 - max replicas: 3

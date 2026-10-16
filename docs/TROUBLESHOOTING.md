@@ -1,4 +1,4 @@
-# InfraWatch Troubleshooting
+# ClueStack Troubleshooting
 
 Use this as an SRE-style operations runbook for diagnosing the local or Kubernetes deployment.
 
@@ -277,7 +277,7 @@ How to read the result:
 
 - `[]` from `/api/v2/alerts` means Alertmanager is reachable but has no active alerts.
 - Connection failures, HTTP 5xx responses, or a failed readiness endpoint mean the Alertmanager API is unavailable.
-- In real local mode, the InfraWatch backend should report an availability error instead of replacing an unavailable Alertmanager with fake alerts.
+- In real local mode, the ClueStack backend should report an availability error instead of replacing an unavailable Alertmanager with fake alerts.
 
 Inspect Prometheus rule and target health:
 

@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Provisioned InfraWatch service health dashboard with uptime, API latency, request volume, and error rate panels.",
+  "description": "Provisioned ClueStack service health dashboard with uptime, API latency, request volume, and error rate panels.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -152,7 +152,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "InfraWatch Service Health",
+  "title": "ClueStack Service Health",
   "uid": "infrawatch-service-health",
   "version": 1,
   "weekStart": ""

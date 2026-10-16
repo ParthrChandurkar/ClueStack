@@ -93,7 +93,7 @@ $EnvPath = Join-Path $RepoRoot ".env"
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "InfraWatch local stack" -ForegroundColor Green
+Write-Host "ClueStack local stack" -ForegroundColor Green
 Write-Host ""
 
 if (-not (Test-CommandAvailable "docker")) {
@@ -152,7 +152,7 @@ if ($DockerComposeConfigExitCode -ne 0) {
 
 Write-Host ""
 Write-Host "Local URLs" -ForegroundColor Green
-Write-Host "  InfraWatch dashboard : http://localhost:$FrontendPort"
+Write-Host "  ClueStack dashboard : http://localhost:$FrontendPort"
 Write-Host "  FastAPI docs         : http://localhost:$BackendPort/docs"
 Write-Host "  Grafana              : http://localhost:$GrafanaPort"
 Write-Host "  Prometheus           : http://localhost:$PrometheusPort"
@@ -178,10 +178,10 @@ if (-not $NoBuild) {
 
 if ($Detached) {
     $ComposeArgs += "-d"
-    Write-Info "Starting InfraWatch in detached mode"
+    Write-Info "Starting ClueStack in detached mode"
 }
 else {
-    Write-Info "Starting InfraWatch in foreground mode. Press Ctrl+C to stop logs."
+    Write-Info "Starting ClueStack in foreground mode. Press Ctrl+C to stop logs."
 }
 
 & docker @ComposeArgs

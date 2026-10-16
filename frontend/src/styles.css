@@ -1,4 +1,4 @@
-/* Operations-grade dashboard styling for the InfraWatch React app. */
+/* Operations-grade dashboard styling for the ClueStack React app. */
 :root {
   color: #f4f7fb;
   background: #0b0f14;
@@ -34,7 +34,8 @@ html {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -97,6 +98,12 @@ a {
   background: #162332;
   color: #79bdff;
   font-weight: 900;
+}
+
+.brand-mark img {
+  width: 44px;
+  height: 44px;
+  display: block;
 }
 
 .brand strong,
@@ -335,6 +342,130 @@ a {
   background: #2a1218;
   color: #ffb8c1;
   padding: 12px 14px;
+}
+
+.project-panel {
+  background:
+    radial-gradient(circle at top right, rgba(77, 163, 255, 0.11), transparent 38%),
+    rgba(18, 24, 32, 0.92);
+}
+
+.project-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 14px;
+}
+
+.project-selector-card,
+.project-create-form {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #2d3743;
+  border-radius: 14px;
+  background: #0c121a;
+  padding: 14px;
+}
+
+.project-selector-card label,
+.project-create-form label {
+  display: grid;
+  gap: 7px;
+  color: #c7d0dc;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.project-selector-card select,
+.project-create-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid #334050;
+  border-radius: 8px;
+  outline: 0;
+  background: #0a0f16;
+  color: #f4f7fb;
+  padding: 0 11px;
+}
+
+.project-selector-card select:focus,
+.project-create-form input:focus {
+  border-color: #4da3ff;
+  box-shadow: 0 0 0 3px rgba(77, 163, 255, 0.18);
+}
+
+.project-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  border-top: 1px solid #26313d;
+  padding-top: 12px;
+}
+
+.project-summary strong,
+.project-create-form strong {
+  color: #ffffff;
+}
+
+.project-summary span,
+.project-create-form span,
+.project-boundary-note {
+  color: #9aa4b2;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.project-summary code {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.project-boundary-note {
+  margin: 0;
+  border-left: 3px solid #f1c75b;
+  background: #211b0d;
+  padding: 8px 10px;
+}
+
+.project-create-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(170px, 0.8fr) minmax(170px, 0.8fr) auto;
+  align-items: end;
+}
+
+.project-create-form > div:first-child {
+  align-self: center;
+}
+
+.project-create-form > div:first-child span {
+  display: block;
+  margin-top: 4px;
+}
+
+.project-create-form button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 8px;
+  background: #4da3ff;
+  color: #07111d;
+  padding: 0 15px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.project-create-form button:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.inline-error {
+  margin-top: 12px;
+  border: 1px solid #6f3340;
+  border-radius: 8px;
+  background: #2a1218;
+  color: #ffb8c1;
+  padding: 10px 12px;
+  font-size: 12px;
 }
 
 .demo-mode-banner {
@@ -701,7 +832,8 @@ a {
     "cpu memory requests errors"
     "alerts alerts alerts alerts"
     "fleet fleet logs logs"
-    "fleet fleet audit readiness";
+    "fleet fleet audit readiness"
+    "reports reports reports reports";
   gap: 14px;
   min-width: 0;
 }
@@ -740,6 +872,10 @@ a {
 
 .fleet-panel {
   grid-area: fleet;
+}
+
+.reports-panel {
+  grid-area: reports;
 }
 
 .logs-panel {
@@ -1184,6 +1320,57 @@ td {
   white-space: nowrap;
 }
 
+.record-id {
+  display: block;
+  margin-top: 3px;
+  color: #8fbce8;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.reports-table td:first-child small {
+  display: block;
+  max-width: 420px;
+  margin-top: 4px;
+  color: #9aa4b2;
+  line-height: 1.4;
+}
+
+.report-operation {
+  color: #f4f7fb;
+}
+
+.report-status {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  border: 1px solid #334050;
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.report-status.success {
+  border-color: rgba(61, 220, 151, 0.38);
+  background: rgba(61, 220, 151, 0.09);
+  color: #78e7b7;
+}
+
+.report-status.failure {
+  border-color: rgba(255, 95, 109, 0.4);
+  background: rgba(255, 95, 109, 0.09);
+  color: #ff9aa5;
+}
+
+.report-status.partial,
+.report-status.skipped {
+  border-color: rgba(241, 199, 91, 0.4);
+  background: rgba(241, 199, 91, 0.09);
+  color: #f4d57a;
+}
+
 .table-action {
   width: 34px;
   min-height: 34px;
@@ -1586,6 +1773,7 @@ td {
       "requests errors"
       "alerts alerts"
       "fleet fleet"
+      "reports reports"
       "logs logs"
       "audit readiness";
   }
@@ -1613,6 +1801,11 @@ td {
 
   .demo-capabilities {
     justify-content: flex-start;
+  }
+
+  .project-workspace-grid,
+  .project-create-form {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1657,6 +1850,7 @@ td {
       "alerts"
       "readiness"
       "fleet"
+      "reports"
       "logs"
       "audit";
   }

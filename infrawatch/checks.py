@@ -1,4 +1,4 @@
-"""Cross-platform doctor and status checks for the InfraWatch CLI."""
+"""Cross-platform doctor and status checks for the ClueStack CLI."""
 
 from __future__ import annotations
 
@@ -113,12 +113,12 @@ def run_doctor(namespace: str = DEFAULT_NAMESPACE, runner: Runner | None = None,
     summary = "Result: Ready" if failures == 0 else "Result: Not ready"
     if warnings:
         summary += f" ({warnings} warning(s))"
-    print(format_results("InfraWatch Doctor", results, summary=summary))
+    print(format_results("ClueStack Doctor", results, summary=summary))
     return 1 if failures else 0
 
 
 def run_status(namespace: str = DEFAULT_NAMESPACE, runner: Runner | None = None) -> int:
-    """Run current InfraWatch runtime status checks and print a concise report."""
+    """Run current ClueStack runtime status checks and print a concise report."""
 
     active_runner = runner or SubprocessRunner()
     results = status_results(namespace=namespace, runner=active_runner)
@@ -127,7 +127,7 @@ def run_status(namespace: str = DEFAULT_NAMESPACE, runner: Runner | None = None)
     summary = "Overall: Running" if failures == 0 else "Overall: Needs attention"
     if warnings:
         summary += f" ({warnings} warning(s))"
-    print(format_results("InfraWatch Status", results, summary=summary))
+    print(format_results("ClueStack Status", results, summary=summary))
     return 1 if failures else 0
 
 
@@ -145,8 +145,8 @@ def doctor_results(namespace: str, runner: Runner, repo_root: Path | None) -> li
             CheckResult(
                 Level.FAIL,
                 "Runtime resources",
-                "InfraWatch runtime resources could not be found",
-                "Reinstall the InfraWatch package or run from a complete source checkout.",
+                "ClueStack runtime resources could not be found",
+                "Reinstall the ClueStack package or run from a complete source checkout.",
             )
         )
     else:
@@ -166,7 +166,7 @@ def doctor_results(namespace: str, runner: Runner, repo_root: Path | None) -> li
 
 
 def status_results(namespace: str, runner: Runner) -> list[CheckResult]:
-    """Return concise runtime state for the current InfraWatch environment."""
+    """Return concise runtime state for the current ClueStack environment."""
 
     results: list[CheckResult] = []
     if not command_exists("kubectl"):
@@ -175,7 +175,7 @@ def status_results(namespace: str, runner: Runner) -> list[CheckResult]:
                 Level.FAIL,
                 "kubectl",
                 "kubectl is not installed or not on PATH",
-                "Install kubectl before checking InfraWatch runtime status.",
+                "Install kubectl before checking ClueStack runtime status.",
             )
         ]
 
@@ -205,13 +205,13 @@ def status_results(namespace: str, runner: Runner) -> list[CheckResult]:
         results.append(
             CheckResult(
                 Level.FAIL,
-                "InfraWatch namespace",
+                "ClueStack namespace",
                 f"namespace '{namespace}' does not exist",
                 "Run the Terraform foundation and Kubernetes deployment flow first.",
             )
         )
         return results
-    results.append(CheckResult(Level.PASS, "InfraWatch namespace", namespace))
+    results.append(CheckResult(Level.PASS, "ClueStack namespace", namespace))
 
     for name, kind, display, required in (
         ("infrawatch-backend", "deployment", "Backend", True),
@@ -279,12 +279,12 @@ def _check_kubectl(results: list[CheckResult], runner: Runner, namespace: str) -
         results.append(CheckResult(Level.PASS, "Kubernetes API", "reachable"))
         namespace_check = runner.run(["kubectl", "get", "namespace", namespace], timeout=10)
         if namespace_check.returncode == 0:
-            results.append(CheckResult(Level.PASS, "InfraWatch namespace", namespace))
+            results.append(CheckResult(Level.PASS, "ClueStack namespace", namespace))
         else:
             results.append(
                 CheckResult(
                     Level.WARN,
-                    "InfraWatch namespace",
+                    "ClueStack namespace",
                     f"namespace '{namespace}' is not present",
                     "Run the local Kubernetes deployment flow when you are ready.",
                 )
@@ -295,7 +295,7 @@ def _check_kubectl(results: list[CheckResult], runner: Runner, namespace: str) -
                 Level.WARN,
                 "Kubernetes API",
                 "not reachable",
-                "Start Minikube or switch kubectl context before deploying InfraWatch.",
+                "Start Minikube or switch kubectl context before deploying ClueStack.",
             )
         )
 

@@ -1,4 +1,4 @@
-# Non-secret PostgreSQL settings for the InfraWatch database.
+# Non-secret PostgreSQL settings for the ClueStack database.
 apiVersion: v1
 kind: ConfigMap
 metadata:

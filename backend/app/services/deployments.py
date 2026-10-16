@@ -1,6 +1,6 @@
 """Deployment orchestration service.
 
-This service translates InfraWatch deployment requests into Kubernetes
+This service translates ClueStack deployment requests into Kubernetes
 Deployment and Service manifests, then optionally applies them with kubectl.
 """
 
@@ -56,14 +56,14 @@ class DeploymentService:
         self._report_service = report_service
 
     def list_deployments(self) -> list[DeploymentRecord]:
-        """List deployments known by InfraWatch."""
+        """List deployments known by ClueStack."""
 
-        return self._repository.list()
+        return [self._record_for_response(record) for record in self._repository.list()]
 
     def list_deployments_for_project(self, project_id: str) -> list[DeploymentRecord]:
         """List deployments explicitly associated with one project."""
 
-        return self._repository.list_by_project(project_id)
+        return [self._record_for_response(record) for record in self._repository.list_by_project(project_id)]
 
     def list_audit_logs(self, limit: int = 100):
         """List newest audit log entries."""
@@ -78,17 +78,24 @@ class DeploymentService:
         if not self._settings.execute_kubectl:
             if existing is None:
                 return None
+            is_manifest_simulation = self._is_manifest_simulation(existing)
+            available_replicas = None if is_manifest_simulation else existing.available_replicas
+            ready_replicas = None if is_manifest_simulation else existing.ready_replicas
             return WorkloadHealth(
                 service=existing.name,
                 namespace=existing.namespace,
                 desired_replicas=existing.replicas,
-                updated_replicas=existing.ready_replicas or existing.available_replicas,
-                ready_replicas=existing.ready_replicas,
-                available_replicas=existing.available_replicas,
-                unavailable_replicas=max(existing.replicas - existing.available_replicas, 0),
-                observed_generation=existing.observed_generation,
+                updated_replicas=ready_replicas if ready_replicas is not None else available_replicas,
+                ready_replicas=ready_replicas,
+                available_replicas=available_replicas,
+                unavailable_replicas=(
+                    max(existing.replicas - available_replicas, 0)
+                    if available_replicas is not None
+                    else None
+                ),
+                observed_generation=None if is_manifest_simulation else existing.observed_generation,
                 pods=[],
-                source="stored",
+                source="manifest-simulation" if is_manifest_simulation else "stored",
             )
 
         try:
@@ -127,10 +134,10 @@ class DeploymentService:
         existing = self._repository.get(request.name)
         manifest = self._build_manifest(request, namespace)
 
-        status = DeploymentStatus.deploying if self._settings.execute_kubectl else DeploymentStatus.running
+        status = DeploymentStatus.deploying if self._settings.execute_kubectl else DeploymentStatus.simulated
         message = "Deployment accepted; Kubernetes rollout verification is starting."
         if not self._settings.execute_kubectl:
-            message = "Kubernetes manifest generated; kubectl execution is disabled in Demo Mode."
+            message = "Kubernetes manifest generated; Kubernetes execution is disabled (manifest simulation)."
 
         record = DeploymentRecord(
             id=existing.id if existing else str(uuid4()),
@@ -141,10 +148,14 @@ class DeploymentService:
             replicas=request.replicas,
             port=request.port,
             status=status,
-            url=f"http://{request.name}.{namespace}.svc.cluster.local:{request.port}",
+            url=(
+                f"http://{request.name}.{namespace}.svc.cluster.local:{request.port}"
+                if self._settings.execute_kubectl
+                else None
+            ),
             commit_sha=request.commit_sha,
-            ready_replicas=request.replicas if not self._settings.execute_kubectl else 0,
-            available_replicas=request.replicas if not self._settings.execute_kubectl else 0,
+            ready_replicas=None,
+            available_replicas=None,
             observed_generation=None,
             last_failure=None,
             message=message,
@@ -172,7 +183,11 @@ class DeploymentService:
                 record = self._apply_and_verify_rollout(record, manifest)
 
             report_status = DeploymentReportStatus.success
-            report_summary = "Deployment completed."
+            report_summary = (
+                "Deployment applied and rollout verified."
+                if self._settings.execute_kubectl
+                else "Deployment manifest generated; Kubernetes execution was disabled."
+            )
             if record.status is DeploymentStatus.failed:
                 report_status = DeploymentReportStatus.failure
                 report_summary = "Deployment failed."
@@ -196,6 +211,33 @@ class DeploymentService:
                 error=exc,
             )
             raise
+
+    @staticmethod
+    def _is_manifest_simulation(record: DeploymentRecord) -> bool:
+        """Recognize new and legacy manifest-only records without rewriting persisted state."""
+
+        return record.status is DeploymentStatus.simulated or (
+            record.status is DeploymentStatus.running
+            and (
+                "Kubernetes execution is disabled (manifest simulation)" in record.message
+                or "kubectl execution is disabled in Demo Mode" in record.message
+            )
+        )
+
+    def _record_for_response(self, record: DeploymentRecord) -> DeploymentRecord:
+        """Present legacy manifest-only records with current, non-running semantics."""
+
+        if not self._is_manifest_simulation(record):
+            return record
+        return record.model_copy(
+            update={
+                "status": DeploymentStatus.simulated,
+                "url": None,
+                "ready_replicas": None,
+                "available_replicas": None,
+                "observed_generation": None,
+            }
+        )
 
     def _record_deploy_report(
         self,
@@ -313,7 +355,7 @@ class DeploymentService:
             action="deployment.deleted",
             service=existing.name,
             status="success",
-            message="Deployment removed from InfraWatch state.",
+            message="Deployment removed from ClueStack state.",
             metadata={"namespace": existing.namespace, "image": existing.image},
         )
         return deleted
@@ -336,10 +378,17 @@ class DeploymentService:
                 action="deployment.rollback_simulated",
                 service=existing.name,
                 status="skipped",
-                message="Rollback requires real Kubernetes execution; demo mode left deployment unchanged.",
+                message="Rollback requires Kubernetes execution; manifest simulation left the deployment unchanged.",
                 metadata={"namespace": existing.namespace},
             )
-            existing.message = "Rollback skipped because Kubernetes execution is disabled in Demo Mode."
+            existing.message = (
+                "Rollback skipped because Kubernetes execution is disabled; deployment state was unchanged."
+            )
+            existing.status = DeploymentStatus.simulated
+            existing.url = None
+            existing.ready_replicas = None
+            existing.available_replicas = None
+            existing.observed_generation = None
             existing.updated_at = utc_now()
             return self._repository.upsert(existing)
 
@@ -455,8 +504,8 @@ class DeploymentService:
             except DeploymentExecutionError:
                 pass
             record.status = DeploymentStatus.failed
-            record.ready_replicas = 0
-            record.available_replicas = 0
+            record.ready_replicas = None
+            record.available_replicas = None
             record.last_failure = failure_detail
             record.message = f"Kubernetes rollout failed: {failure_detail}"
             record.updated_at = utc_now()

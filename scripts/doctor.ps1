@@ -172,7 +172,7 @@ $EnvPath = Join-Path $RepoRoot ".env"
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "InfraWatch Doctor" -ForegroundColor Green
+Write-Host "ClueStack Doctor" -ForegroundColor Green
 Write-Host ""
 
 foreach ($path in @(
@@ -239,10 +239,10 @@ if (Test-CommandAvailable "docker") {
         $containerCheck = Invoke-NativeCapture -Command "docker" -Arguments @("ps", "--format", "{{.Names}}")
         $infraContainers = @($containerCheck.Output | Where-Object { $_ -like "infrawatch-*" })
         if ($infraContainers.Count -gt 0) {
-            Write-Pass "InfraWatch Docker containers are running: $($infraContainers -join ', ')"
+            Write-Pass "ClueStack Docker containers are running: $($infraContainers -join ', ')"
         }
         else {
-            Write-WarnCheck "No running InfraWatch Docker containers were found"
+            Write-WarnCheck "No running ClueStack Docker containers were found"
         }
     }
     else {
@@ -288,11 +288,11 @@ if (Test-CommandAvailable "kubectl") {
             if ($pods.ExitCode -eq 0 -and $pods.Output) {
                 $problemPods = @($pods.Output | Where-Object { $_ -match "CrashLoopBackOff|ImagePullBackOff|ErrImagePull|Error|Pending" })
                 if ($problemPods.Count -gt 0) {
-                    Write-WarnCheck "Some InfraWatch pods need attention"
+                    Write-WarnCheck "Some ClueStack pods need attention"
                     $problemPods | ForEach-Object { Write-Host "       $_" -ForegroundColor Yellow }
                 }
                 else {
-                    Write-Pass "InfraWatch pods have no obvious error states"
+                    Write-Pass "ClueStack pods have no obvious error states"
                 }
             }
             else {
@@ -398,7 +398,7 @@ else {
     Write-WarnCheck "Minikube is not installed. Docker Compose mode can still be used."
 }
 
-Test-HttpEndpoint -Name "InfraWatch dashboard" -Url "http://127.0.0.1:$FrontendPort"
+Test-HttpEndpoint -Name "ClueStack dashboard" -Url "http://127.0.0.1:$FrontendPort"
 Test-HttpEndpoint -Name "FastAPI docs" -Url "http://127.0.0.1:$BackendPort/docs"
 Test-HttpEndpoint -Name "Prometheus" -Url "http://127.0.0.1:$PrometheusPort/-/ready"
 Test-HttpEndpoint -Name "Grafana" -Url "http://127.0.0.1:$GrafanaPort/api/health"
@@ -416,4 +416,4 @@ if ($script:Warnings -gt 0) {
     exit 0
 }
 
-Write-Host "Doctor finished cleanly. InfraWatch looks ready." -ForegroundColor Green
+Write-Host "Doctor finished cleanly. ClueStack looks ready." -ForegroundColor Green

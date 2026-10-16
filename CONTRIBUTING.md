@@ -1,8 +1,8 @@
-# Contributing to InfraWatch
+# Contributing to ClueStack
 
-Thanks for helping improve InfraWatch. This project is a local-first Kubernetes deployment and observability platform for lightweight application testing, SRE learning, and developer workflows.
+Thanks for helping improve ClueStack. This project is a local-first Kubernetes deployment and observability platform for lightweight application testing, SRE learning, and developer workflows.
 
-InfraWatch is intentionally scoped to local Docker, Docker Compose, Minikube-compatible Kubernetes, Terraform, Kustomize, Prometheus, Redis, Loki, Grafana Alloy, Alertmanager, and a React/FastAPI dashboard. It is not a hosted SaaS control plane.
+ClueStack is intentionally scoped to local Docker, Docker Compose, Minikube-compatible Kubernetes, Terraform, Kustomize, Prometheus, Redis, Loki, Grafana Alloy, Alertmanager, and a React/FastAPI dashboard. It is not a hosted SaaS control plane.
 
 ## Prerequisites
 
@@ -102,7 +102,7 @@ python -m pip install build
 python -m build
 ```
 
-Before InfraWatch is published to PyPI, package testing requires a repository checkout so contributors can build and install the local wheel from `dist/`. Prefer selecting `dist/infrawatch-*-py3-none-any.whl` instead of hardcoding a versioned filename in new docs or scripts.
+Before ClueStack is published to PyPI, package testing requires a repository checkout so contributors can build and install the local wheel from `dist/`. Prefer selecting `dist/infrawatch-*-py3-none-any.whl` instead of hardcoding a versioned filename in new docs or scripts.
 
 Whitespace check:
 

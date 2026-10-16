@@ -1,4 +1,4 @@
-"""API regression tests for the InfraWatch backend."""
+"""API regression tests for the ClueStack backend."""
 
 import asyncio
 import json
@@ -136,7 +136,16 @@ def test_deployment_lifecycle(tmp_path) -> None:
 
     deploy_response = client.post("/deploy", json=payload)
     assert deploy_response.status_code == 202
-    assert deploy_response.json()["deployment"]["status"] == "Running"
+    deployment = deploy_response.json()["deployment"]
+    assert deployment["status"] == "Simulated"
+    assert deployment["replicas"] == 2
+    assert deployment["ready_replicas"] is None
+    assert deployment["available_replicas"] is None
+    assert deployment["observed_generation"] is None
+    assert deployment["url"] is None
+    assert deploy_response.json()["deployment"]["message"] == (
+        "Kubernetes manifest generated; Kubernetes execution is disabled (manifest simulation)."
+    )
     deployment_id = deploy_response.json()["deployment"]["id"]
     UUID(deployment_id)
 
@@ -237,9 +246,13 @@ def test_successful_deployment_creates_sanitized_report_with_stable_ids(tmp_path
     assert report["project_id"] == project["id"]
     assert report["deployment_id"] == deployment["id"]
     assert report["target"] == "manifest_simulation"
+    assert report["summary"] == "Deployment manifest generated; Kubernetes execution was disabled."
     assert report["duration_ms"] >= 0
     assert report["evidence"]["deployment_name"] == "catalog-api"
     assert report["evidence"]["replicas"] == 2
+    assert report["evidence"]["status"] == "Simulated"
+    assert report["evidence"]["ready_replicas"] is None
+    assert report["evidence"]["available_replicas"] is None
     assert "synthetic-secret" not in json.dumps(report["evidence"])
     assert REDACTION_MARKER in report["evidence"]["image"]
     assert "PASSWORD" not in json.dumps(report["evidence"])
@@ -353,8 +366,8 @@ def test_unknown_deployment_delete_returns_404(tmp_path) -> None:
     assert audit_logs.json()[0]["action"] == "deployment.delete_missing"
 
 
-def test_workload_health_uses_stored_state_when_kubectl_disabled(tmp_path) -> None:
-    """The workload endpoint should expose replica health without requiring kubectl in demo mode."""
+def test_workload_health_marks_manifest_simulation_as_unobserved(tmp_path) -> None:
+    """Manifest simulation should preserve intent without fabricating workload observations."""
 
     client = build_client(tmp_path)
     payload = {
@@ -371,11 +384,114 @@ def test_workload_health_uses_stored_state_when_kubectl_disabled(tmp_path) -> No
     body = response.json()
     assert body["service"] == "catalog-api"
     assert body["desired_replicas"] == 2
-    assert body["ready_replicas"] == 2
-    assert body["available_replicas"] == 2
-    assert body["unavailable_replicas"] == 0
+    assert body["updated_replicas"] is None
+    assert body["ready_replicas"] is None
+    assert body["available_replicas"] is None
+    assert body["unavailable_replicas"] is None
+    assert body["observed_generation"] is None
     assert body["pods"] == []
-    assert body["source"] == "stored"
+    assert body["source"] == "manifest-simulation"
+
+
+def test_legacy_manifest_simulation_is_normalized_without_rewriting_state(tmp_path) -> None:
+    """Legacy Running simulation records should be presented honestly and remain readable."""
+
+    state_file = tmp_path / "deployments.json"
+    state_file.write_text(
+        json.dumps(
+            {
+                "legacy-api": {
+                    "name": "legacy-api",
+                    "image": "docker.io/example/legacy-api:latest",
+                    "namespace": "infrawatch",
+                    "replicas": 2,
+                    "port": 8080,
+                    "status": "Running",
+                    "url": "http://legacy-api.infrawatch.svc.cluster.local:8080",
+                    "ready_replicas": 2,
+                    "available_replicas": 2,
+                    "observed_generation": None,
+                    "message": "Kubernetes manifest generated; kubectl execution is disabled in Demo Mode.",
+                    "created_at": "2026-10-10T10:00:00Z",
+                    "updated_at": "2026-10-10T10:00:00Z",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = build_client(tmp_path)
+
+    deployment = client.get("/deployments").json()[0]
+    assert deployment["status"] == "Simulated"
+    assert deployment["url"] is None
+    assert deployment["ready_replicas"] is None
+    assert deployment["available_replicas"] is None
+
+    workload = client.get("/workloads/legacy-api").json()
+    assert workload["source"] == "manifest-simulation"
+    assert workload["updated_replicas"] is None
+    assert workload["ready_replicas"] is None
+    assert workload["available_replicas"] is None
+    assert workload["unavailable_replicas"] is None
+
+    persisted = json.loads(state_file.read_text(encoding="utf-8"))["legacy-api"]
+    assert persisted["status"] == "Running"
+    assert persisted["ready_replicas"] == 2
+
+
+def test_verified_kubernetes_deployment_uses_observed_rollout_state(monkeypatch, tmp_path) -> None:
+    """A successful kubectl rollout should still report Running with observed replicas."""
+
+    settings = Settings(
+        environment="test",
+        state_file=str(tmp_path / "deployments.json"),
+        audit_file=str(tmp_path / "audit-log.json"),
+        projects_file=str(tmp_path / "projects.json"),
+        reports_file=str(tmp_path / "reports.json"),
+        execute_kubectl=True,
+        allow_mock_observability=True,
+    )
+
+    monkeypatch.setattr("app.services.deployments.DeploymentService._kubectl_apply", lambda _self, _manifest: None)
+    monkeypatch.setattr(
+        "app.services.deployments.DeploymentService._kubectl_rollout_status",
+        lambda _self, _name, _namespace: None,
+    )
+    monkeypatch.setattr(
+        "app.services.deployments.DeploymentService._read_deployment_state",
+        lambda _self, _name, _namespace: {
+            "ready_replicas": 2,
+            "available_replicas": 2,
+            "observed_generation": 4,
+        },
+    )
+    client = TestClient(create_app(settings))
+
+    response = client.post(
+        "/deploy",
+        json={
+            "name": "catalog-api",
+            "image": "docker.io/example/catalog-api:latest",
+            "replicas": 2,
+            "port": 8080,
+        },
+    )
+
+    assert response.status_code == 202
+    deployment = response.json()["deployment"]
+    assert deployment["status"] == "Running"
+    assert deployment["ready_replicas"] == 2
+    assert deployment["available_replicas"] == 2
+    assert deployment["observed_generation"] == 4
+    assert deployment["url"] == "http://catalog-api.infrawatch.svc.cluster.local:8080"
+
+    report = client.get("/reports").json()[0]
+    assert report["status"] == "success"
+    assert report["summary"] == "Deployment applied and rollout verified."
+    assert report["target"] == "local_kubernetes"
+    assert report["evidence"]["status"] == "Running"
+    assert report["evidence"]["ready_replicas"] == 2
+    assert report["evidence"]["available_replicas"] == 2
 
 
 def test_unknown_workload_returns_404(tmp_path) -> None:
@@ -489,8 +605,8 @@ def test_postgres_url_is_parsed_into_connection_kwargs(monkeypatch) -> None:
     }
 
 
-def test_demo_rollback_is_audited_without_kubectl(tmp_path) -> None:
-    """Rollback is safe in demo mode and records that no cluster action happened."""
+def test_manifest_simulation_rollback_is_audited_without_kubectl(tmp_path) -> None:
+    """Rollback is skipped in manifest simulation and records that no cluster action happened."""
 
     client = build_client(tmp_path)
     payload = {
@@ -504,11 +620,19 @@ def test_demo_rollback_is_audited_without_kubectl(tmp_path) -> None:
     rollback = client.post("/deployment/rollback-api/rollback")
     assert rollback.status_code == 200
     assert rollback.json()["name"] == "rollback-api"
-    assert "Demo Mode" in rollback.json()["message"]
+    assert rollback.json()["message"] == (
+        "Rollback skipped because Kubernetes execution is disabled; deployment state was unchanged."
+    )
+    assert rollback.json()["status"] == "Simulated"
+    assert rollback.json()["ready_replicas"] is None
+    assert rollback.json()["available_replicas"] is None
 
     audit_logs = client.get("/audit-logs")
     assert audit_logs.status_code == 200
     assert audit_logs.json()[0]["action"] == "deployment.rollback_simulated"
+    assert audit_logs.json()[0]["message"] == (
+        "Rollback requires Kubernetes execution; manifest simulation left the deployment unchanged."
+    )
 
 
 def test_demo_runtime_can_seed_sample_services(tmp_path) -> None:

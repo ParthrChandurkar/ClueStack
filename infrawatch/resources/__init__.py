@@ -1,1 +1,1 @@
-"""Packaged runtime resources for InfraWatch."""
+"""Packaged runtime resources for ClueStack."""

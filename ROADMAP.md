@@ -1,10 +1,10 @@
-# InfraWatch Roadmap
+# ClueStack Roadmap
 
-InfraWatch is an early local-first Kubernetes deployment and observability project. This roadmap describes the intended direction of the project without promising specific dates, releases, or delivery timelines.
+ClueStack is an early local-first Kubernetes deployment and observability project. This roadmap describes the intended direction of the project without promising specific dates, releases, or delivery timelines.
 
 ## Current status
 
-InfraWatch v0.3.0 is a Developer Preview.
+ClueStack v0.3.0 is a Developer Preview.
 
 The current project focuses on local Kubernetes deployment and observability for lightweight local application testing. It includes:
 
@@ -37,7 +37,7 @@ The next product direction to explore is a limited, explicit user-workload workf
 
 Possible scope:
 
-- support deploying a user-provided container image or Kubernetes manifests into the local InfraWatch workflow;
+- support deploying a user-provided container image or Kubernetes manifests into the local ClueStack workflow;
 - define safe input validation before applying resources;
 - preserve clear namespace boundaries and ownership rules;
 - provide predictable cleanup behavior;
@@ -57,7 +57,7 @@ Later work should stay grounded in tested local use cases and user feedback:
 
 ## Non-goals
 
-InfraWatch is not currently intended to be:
+ClueStack is not currently intended to be:
 
 - a hosted SaaS platform;
 - a multi-tenant control plane;

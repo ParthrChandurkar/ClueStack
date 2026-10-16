@@ -1,4 +1,4 @@
-"""Project management service for InfraWatch."""
+"""Project management service for ClueStack."""
 
 from app.repository import ProjectRepository
 from app.schemas import ProjectCreate, ProjectMode, ProjectRecord

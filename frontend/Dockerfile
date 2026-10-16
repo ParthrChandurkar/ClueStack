@@ -1,4 +1,4 @@
-# Builds and serves the InfraWatch React dashboard.
+# Builds and serves the ClueStack React dashboard.
 FROM node:22-alpine AS build
 
 WORKDIR /app

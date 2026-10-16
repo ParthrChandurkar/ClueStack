@@ -1,4 +1,4 @@
-// Vite build configuration for the InfraWatch React dashboard.
+// Vite build configuration for the ClueStack React dashboard.
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 

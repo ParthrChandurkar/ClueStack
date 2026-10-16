@@ -1,4 +1,4 @@
-# Helm values for Grafana Alloy in the InfraWatch Kubernetes stack.
+# Helm values for Grafana Alloy in the ClueStack Kubernetes stack.
 # Alloy tails Kubernetes pod logs and forwards them to Loki.
 
 alloy:

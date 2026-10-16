@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible InfraWatch problem.
+description: Report a reproducible ClueStack problem.
 title: "[Bug]: "
 labels:
   - bug
@@ -11,7 +11,7 @@ body:
   - type: input
     id: commit
     attributes:
-      label: InfraWatch version or commit
+      label: ClueStack version or commit
       description: Paste the version, commit SHA, or branch you tested.
       placeholder: "a85c726 or main"
     validations:

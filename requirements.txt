@@ -1,11 +1,10 @@
-# InfraWatch Python dependencies.
+# ClueStack Python dependencies.
 # Install with: python -m pip install -r requirements.txt
 #
 # Frontend dependencies are managed separately by npm in:
 # frontend/package.json and frontend/package-lock.json
 #
-# System tools to install/download are documented in:
-# InfraWatch_Project_Guide.docx
+# System-tool prerequisites are documented in README.md and docs/GETTING_STARTED.md.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 pydantic-settings==2.7.1

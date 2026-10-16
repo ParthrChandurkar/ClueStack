@@ -1,6 +1,6 @@
 # Security Policy
 
-InfraWatch is an early local-first developer project for Docker, Kubernetes, and observability workflows. It is not a hosted service or production security product.
+ClueStack is an early local-first developer project for Docker, Kubernetes, and observability workflows. It is not a hosted service or production security product.
 
 ## Supported versions
 
@@ -26,7 +26,7 @@ Helpful reports include:
 
 ## Security scope
 
-Security-relevant areas for InfraWatch include:
+Security-relevant areas for ClueStack include:
 
 - handling of local `.env` files and Kubernetes Secrets;
 - kubeconfig and Kubernetes API access;

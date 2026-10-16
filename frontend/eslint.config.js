@@ -1,4 +1,4 @@
-// ESLint flat config for the InfraWatch React dashboard.
+// ESLint flat config for the ClueStack React dashboard.
 import tsParser from "@typescript-eslint/parser";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import reactHooks from "eslint-plugin-react-hooks";

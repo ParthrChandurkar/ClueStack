@@ -1,4 +1,4 @@
-# Builds the InfraWatch FastAPI backend container with kubectl for cluster mode.
+# Builds the ClueStack FastAPI backend container with kubectl for cluster mode.
 FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

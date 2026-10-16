@@ -1,6 +1,6 @@
 """Pydantic schemas shared by API routes and service classes.
 
-The models define InfraWatch's public REST contract for deployments, metrics,
+The models define ClueStack's public REST contract for deployments, metrics,
 and log responses.
 """
 
@@ -16,6 +16,7 @@ class DeploymentStatus(str, Enum):
     """Supported lifecycle states for a deployment."""
 
     running = "Running"
+    simulated = "Simulated"
     failed = "Failed"
     pending = "Pending"
     deploying = "Deploying"
@@ -24,7 +25,7 @@ class DeploymentStatus(str, Enum):
 
 
 class ProjectMode(str, Enum):
-    """Supported InfraWatch project operating modes."""
+    """Supported ClueStack project operating modes."""
 
     local = "local"
     github_repository = "github_repository"
@@ -38,7 +39,7 @@ class ProjectSourceType(str, Enum):
 
 
 class ProjectCreate(BaseModel):
-    """Validated input for creating an InfraWatch project."""
+    """Validated input for creating a ClueStack project."""
 
     name: str = Field(..., min_length=2, max_length=80)
     slug: str | None = Field(
@@ -103,7 +104,7 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectRecord(ProjectCreate):
-    """Persisted InfraWatch project metadata."""
+    """Persisted ClueStack project metadata."""
 
     id: str
     created_at: datetime
@@ -204,7 +205,7 @@ class DeploymentReportRecord(DeploymentReportCreate):
 
 
 class DeploymentRequest(BaseModel):
-    """Payload used to deploy a service through InfraWatch."""
+    """Payload used to deploy a service through ClueStack."""
 
     name: str = Field(..., min_length=2, max_length=63, pattern=r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
     project_id: str | None = None
@@ -242,8 +243,8 @@ class DeploymentRecord(BaseModel):
     status: DeploymentStatus
     url: str | None = None
     commit_sha: str | None = None
-    ready_replicas: int = 0
-    available_replicas: int = 0
+    ready_replicas: int | None = None
+    available_replicas: int | None = None
     observed_generation: int | None = None
     last_failure: str | None = None
     message: str
@@ -268,7 +269,7 @@ class DeploymentResponse(BaseModel):
 
 
 class AuditLogEntry(BaseModel):
-    """Immutable operational event recorded by InfraWatch."""
+    """Immutable operational event recorded by ClueStack."""
 
     id: str
     action: str
@@ -315,10 +316,10 @@ class WorkloadHealth(BaseModel):
     service: str
     namespace: str
     desired_replicas: int
-    updated_replicas: int
-    ready_replicas: int
-    available_replicas: int
-    unavailable_replicas: int
+    updated_replicas: int | None
+    ready_replicas: int | None
+    available_replicas: int | None
+    unavailable_replicas: int | None
     observed_generation: int | None = None
     pods: list[PodHealth] = Field(default_factory=list)
     source: str

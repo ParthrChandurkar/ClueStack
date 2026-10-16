@@ -1,23 +1,31 @@
-// Thin API wrapper around the InfraWatch backend REST endpoints.
+// Thin API wrapper around the ClueStack backend REST endpoints.
 import type {
   AuditLogEntry,
   AlertsResponse,
   DeployPayload,
   DeploymentRecord,
+  DeploymentReportRecord,
   LogsResponse,
+  ProjectCreate,
+  ProjectRecord,
   ServiceMetrics,
   WorkloadHealth,
 } from "./types";
 import {
   deleteDemoDeployment,
+  createDemoProject,
   deployDemoService,
+  getDemoDefaultLocalProject,
   getDemoAlerts,
   getDemoLogs,
   getDemoMetrics,
   getDemoWorkloadHealth,
   listDemoAuditLogs,
   listDemoDeployments,
+  listDemoProjects,
+  listDemoReports,
   resetDemoState,
+  rollbackDemoDeployment,
 } from "./demoStore";
 
 const configuredApiUrl = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -93,6 +101,44 @@ export function listDeployments(): Promise<DeploymentRecord[]> {
   );
 }
 
+export function listProjects(): Promise<ProjectRecord[]> {
+  return withDemoFallback(
+    () => request<ProjectRecord[]>("/projects"),
+    () => listDemoProjects(),
+  );
+}
+
+export function createProject(payload: ProjectCreate): Promise<ProjectRecord> {
+  return withDemoFallback(
+    () => request<ProjectRecord>("/projects", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+    () => createDemoProject(payload),
+  );
+}
+
+export function getDefaultLocalProject(): Promise<ProjectRecord> {
+  return withDemoFallback(
+    () => request<ProjectRecord>("/projects/default-local"),
+    () => getDemoDefaultLocalProject(),
+  );
+}
+
+export function listProjectDeployments(projectId: string): Promise<DeploymentRecord[]> {
+  return withDemoFallback(
+    () => request<DeploymentRecord[]>(`/projects/${projectId}/deployments`),
+    () => listDemoDeployments(projectId),
+  );
+}
+
+export function listProjectReports(projectId: string): Promise<DeploymentReportRecord[]> {
+  return withDemoFallback(
+    () => request<DeploymentReportRecord[]>(`/projects/${projectId}/reports`),
+    () => listDemoReports(projectId),
+  );
+}
+
 export function deployService(payload: DeployPayload): Promise<{ deployment: DeploymentRecord }> {
   return withDemoFallback(
     () => request<{ deployment: DeploymentRecord }>("/deploy", {
@@ -113,17 +159,7 @@ export function deleteDeployment(name: string): Promise<{ status: string; name: 
 export function rollbackDeployment(name: string): Promise<DeploymentRecord> {
   return withDemoFallback(
     () => request<DeploymentRecord>(`/deployment/${name}/rollback`, { method: "POST" }),
-    () => {
-      const deployment = listDemoDeployments().find((item) => item.name === name);
-      if (!deployment) {
-        throw new Error("Deployment not found");
-      }
-      return {
-        ...deployment,
-        message: "Rollback is simulated in the browser sandbox. Real rollback uses kubectl rollout undo.",
-        updated_at: new Date().toISOString(),
-      };
-    },
+    () => rollbackDemoDeployment(name),
   );
 }
 

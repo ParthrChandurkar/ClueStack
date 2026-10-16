@@ -1,4 +1,4 @@
-# PostgreSQL StatefulSet with persistent storage for InfraWatch data.
+# PostgreSQL StatefulSet with persistent storage for ClueStack data.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

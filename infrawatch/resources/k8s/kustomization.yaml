@@ -1,4 +1,4 @@
-# Kustomize bundle for deploying InfraWatch application workloads.
+# Kustomize bundle for deploying ClueStack application workloads.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

@@ -79,7 +79,7 @@ $Namespace = "infrawatch"
 Set-Location -LiteralPath $RepoRoot
 
 Write-Host ""
-Write-Host "Stopping InfraWatch local Kubernetes stack" -ForegroundColor Green
+Write-Host "Stopping ClueStack local Kubernetes stack" -ForegroundColor Green
 Write-Host ""
 
 if (-not (Test-CommandAvailable "kubectl")) {
@@ -95,7 +95,7 @@ if ($StopMinikube -and -not (Test-CommandAvailable "minikube")) {
 Write-Info "Checking Kubernetes access"
 $ClusterReachable = Invoke-NativeQuiet -Command "kubectl" -Arguments @("cluster-info")
 if ($ClusterReachable -ne 0) {
-    Write-Warn "Kubernetes is not reachable from the current kubectl context. No InfraWatch workloads were changed."
+    Write-Warn "Kubernetes is not reachable from the current kubectl context. No ClueStack workloads were changed."
 
     if ($StopMinikube) {
         Write-Info "Attempting to stop Minikube anyway"
@@ -125,7 +125,7 @@ if ($CheckOnly) {
     Write-Host "To pause workloads:"
     Write-Host "  .\scripts\stop-k8s.ps1"
     Write-Host ""
-    Write-Host "To remove all InfraWatch Kubernetes data:"
+    Write-Host "To remove all ClueStack Kubernetes data:"
     Write-Host "  .\scripts\stop-k8s.ps1 -RemoveData"
     Write-Host ""
     Write-Host "To keep observability running while pausing the app:"
@@ -135,7 +135,7 @@ if ($CheckOnly) {
 
 if ($RemoveData) {
     if (-not (Test-CommandAvailable "terraform")) {
-        Write-Fail "terraform was not found. Terraform owns the InfraWatch namespace foundation; install Terraform or remove -RemoveData."
+        Write-Fail "terraform was not found. Terraform owns the ClueStack namespace foundation; install Terraform or remove -RemoveData."
         exit 1
     }
 
@@ -195,14 +195,14 @@ if ($RemoveData) {
 
     Write-Info "Deleting Kustomize-owned application resources before Terraform namespace cleanup"
     & kubectl delete -k k8s --ignore-not-found=true
-    Assert-LastCommand "Could not delete Kustomize-owned InfraWatch resources."
+    Assert-LastCommand "Could not delete Kustomize-owned ClueStack resources."
 
     & kubectl wait --for=delete pod --namespace $Namespace -l "app.kubernetes.io/part-of=infrawatch" --timeout=120s 2>$null
     if ($LASTEXITCODE -ne 0) {
-        Write-Warn "Some application pods may still be terminating; Terraform namespace cleanup will finish removing local InfraWatch data."
+        Write-Warn "Some application pods may still be terminating; Terraform namespace cleanup will finish removing local ClueStack data."
     }
 
-    Write-Warn "Destroying Terraform-managed InfraWatch foundation after Kustomize/Helm-owned workloads were removed."
+    Write-Warn "Destroying Terraform-managed ClueStack foundation after Kustomize/Helm-owned workloads were removed."
     & terraform -chdir=terraform destroy -auto-approve "-var=kube_context=minikube"
     Assert-LastCommand "Terraform destroy failed."
 
@@ -221,7 +221,7 @@ if ($RemoveData) {
     if ($HostPaths.Count -gt 0 -and (Test-CommandAvailable "minikube")) {
         foreach ($HostPath in $HostPaths) {
             if (-not $HostPath.StartsWith($HostPathPrefix)) {
-                Write-Warn "Skipping unexpected hostPath outside InfraWatch namespace: $HostPath"
+                Write-Warn "Skipping unexpected hostPath outside ClueStack namespace: $HostPath"
                 continue
             }
 
@@ -247,7 +247,7 @@ else {
     & kubectl delete hpa infrawatch-backend --namespace $Namespace --ignore-not-found=true
     Assert-LastCommand "Could not delete the backend HPA."
 
-    Write-Info "Scaling InfraWatch workloads to zero replicas"
+    Write-Info "Scaling ClueStack workloads to zero replicas"
     Scale-IfExists -Kind "deployment" -Name "infrawatch-backend" -Replicas 0
     Scale-IfExists -Kind "deployment" -Name "infrawatch-frontend" -Replicas 0
     Scale-IfExists -Kind "deployment" -Name "infrawatch-redis" -Replicas 0
@@ -264,7 +264,7 @@ if ($StopMinikube) {
 }
 
 Write-Host ""
-Write-Host "InfraWatch local Kubernetes stack stopped." -ForegroundColor Green
+Write-Host "ClueStack local Kubernetes stack stopped." -ForegroundColor Green
 
 if (-not $RemoveData) {
     Write-Host "State was preserved. Start again with:"

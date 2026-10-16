@@ -1,4 +1,4 @@
-# Helm values for kube-prometheus-stack in the InfraWatch namespace.
+# Helm values for kube-prometheus-stack in the ClueStack namespace.
 fullnameOverride: infrawatch-kube-prometheus
 
 defaultRules:
@@ -167,8 +167,8 @@ additionalPrometheusRulesMap:
               service: infrawatch-backend
               namespace: infrawatch
             annotations:
-              summary: InfraWatch backend scrape is unavailable
-              description: Prometheus cannot scrape the InfraWatch backend metrics endpoint.
+              summary: ClueStack backend scrape is unavailable
+              description: Prometheus cannot scrape the ClueStack backend metrics endpoint.
           - alert: HighCpuUsage
             expr: sum(rate(container_cpu_usage_seconds_total{namespace="infrawatch",pod!=""}[5m])) by (namespace, pod) > 0.8
             for: 5m

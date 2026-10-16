@@ -1,19 +1,56 @@
-// Shared TypeScript types for InfraWatch API responses.
-export type DeploymentStatus = "Running" | "Failed" | "Pending" | "Deploying" | "Deleting" | "Deleted";
+// Shared TypeScript types for ClueStack API responses.
+export type DeploymentStatus =
+  | "Running"
+  | "Simulated"
+  | "Failed"
+  | "Pending"
+  | "Deploying"
+  | "Deleting"
+  | "Deleted";
+export type ProjectMode = "local" | "github_repository";
+export type ProjectSourceType = "manual" | "github_public_readonly";
+export type DeploymentReportOperation = "deploy" | "delete" | "rollback" | "status_check" | "repository_analysis";
+export type DeploymentReportStatus = "success" | "failure" | "partial" | "skipped";
+
+export interface ProjectCreate {
+  name: string;
+  slug?: string;
+  mode?: ProjectMode;
+  source_type?: ProjectSourceType;
+  repository_url?: string | null;
+  default_namespace?: string;
+  description?: string | null;
+}
+
+export interface ProjectRecord {
+  id: string;
+  name: string;
+  slug: string;
+  mode: ProjectMode;
+  source_type: ProjectSourceType;
+  repository_url: string | null;
+  default_namespace: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+}
 
 export interface DeploymentRecord {
+  id: string | null;
   name: string;
+  project_id: string | null;
   image: string;
   namespace: string;
   replicas: number;
   port: number;
   status: DeploymentStatus;
-  url?: string;
-  commit_sha?: string;
-  ready_replicas?: number;
-  available_replicas?: number;
-  observed_generation?: number;
-  last_failure?: string;
+  url: string | null;
+  commit_sha: string | null;
+  ready_replicas: number | null;
+  available_replicas: number | null;
+  observed_generation: number | null;
+  last_failure: string | null;
   message: string;
   created_at: string;
   updated_at: string;
@@ -21,10 +58,36 @@ export interface DeploymentRecord {
 
 export interface DeployPayload {
   name: string;
+  project_id?: string;
   image: string;
+  namespace?: string;
   replicas: number;
   port: number;
   environment: Record<string, string>;
+  labels?: Record<string, string>;
+  commit_sha?: string;
+}
+
+export interface DeploymentReportError {
+  code: string | null;
+  message: string;
+}
+
+export interface DeploymentReportRecord {
+  id: string;
+  project_id: string | null;
+  deployment_id: string | null;
+  operation: DeploymentReportOperation;
+  status: DeploymentReportStatus;
+  summary: string;
+  target: string;
+  commit_sha: string | null;
+  started_at: string;
+  completed_at: string | null;
+  duration_ms: number | null;
+  evidence: Record<string, unknown>;
+  errors: DeploymentReportError[];
+  created_at: string;
 }
 
 export interface MetricPoint {
@@ -54,11 +117,11 @@ export interface WorkloadHealth {
   service: string;
   namespace: string;
   desired_replicas: number;
-  updated_replicas: number;
-  ready_replicas: number;
-  available_replicas: number;
-  unavailable_replicas: number;
-  observed_generation?: number;
+  updated_replicas: number | null;
+  ready_replicas: number | null;
+  available_replicas: number | null;
+  unavailable_replicas: number | null;
+  observed_generation?: number | null;
   pods: PodHealth[];
   source: string;
 }

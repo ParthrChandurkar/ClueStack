@@ -1,4 +1,4 @@
-"""Measure basic InfraWatch API latency without external dependencies."""
+"""Measure basic ClueStack API latency without external dependencies."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def percentile(values: list[float], percent: float) -> float:
 def main() -> None:
     """Run repeated GET requests and print latency stats as JSON."""
 
-    parser = argparse.ArgumentParser(description="Measure InfraWatch API latency.")
+    parser = argparse.ArgumentParser(description="Measure ClueStack API latency.")
     parser.add_argument("--url", default="http://localhost:8000/healthz", help="URL to measure.")
     parser.add_argument("--requests", type=int, default=50, help="Number of requests to send.")
     args = parser.parse_args()

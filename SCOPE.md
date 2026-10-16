@@ -1,16 +1,16 @@
-# InfraWatch Scope
+# ClueStack Scope
 
-This document explains what InfraWatch is intended to do today, what it does not do, and where its boundaries are as an early developer-preview project.
+This document explains what ClueStack is intended to do today, what it does not do, and where its boundaries are as an early developer-preview project.
 
 ## Purpose
 
-InfraWatch is a local-first Kubernetes deployment and observability tool for lightweight local application testing.
+ClueStack is a local-first Kubernetes deployment and observability tool for lightweight local application testing.
 
 It is designed to help users run a small local stack, inspect deployment state, and understand workload health, metrics, logs, and alerts without manually wiring every component from scratch.
 
 ## Intended users
 
-InfraWatch is currently aimed at:
+ClueStack is currently aimed at:
 
 - developers testing lightweight containerized services locally;
 - students learning Kubernetes and observability workflows;
@@ -21,7 +21,7 @@ The project is not currently designed for platform teams running production mult
 
 ## Current capabilities
 
-InfraWatch v0.3.0 Developer Preview currently includes:
+ClueStack v0.3.0 Developer Preview currently includes:
 
 - an installable Python CLI with `infrawatch doctor`, `infrawatch start`, `infrawatch status`, and `infrawatch stop`;
 - Docker Compose and Minikube-oriented local workflows;
@@ -38,7 +38,7 @@ InfraWatch v0.3.0 Developer Preview currently includes:
 
 ## Data-source transparency
 
-InfraWatch must keep demo data and live telemetry clearly separated.
+ClueStack must keep demo data and live telemetry clearly separated.
 
 Demo or mock data is useful for exploring the UI without a fully running Kubernetes observability stack. It should not be presented as real cluster telemetry.
 
@@ -46,13 +46,13 @@ Live observability data comes from configured local components such as Prometheu
 
 ## Operating model
 
-InfraWatch integrates existing Kubernetes and observability components. It does not replace them.
+ClueStack integrates existing Kubernetes and observability components. It does not replace them.
 
-The project uses tools and systems such as Docker, Docker Compose, Minikube, kubectl, Terraform, Kustomize, Prometheus, Grafana, Loki, Grafana Alloy, Alertmanager, PostgreSQL, and Redis. InfraWatch's role is to provide a local workflow and dashboard around those components for a focused lightweight testing use case.
+The project uses tools and systems such as Docker, Docker Compose, Minikube, kubectl, Terraform, Kustomize, Prometheus, Grafana, Loki, Grafana Alloy, Alertmanager, PostgreSQL, and Redis. ClueStack's role is to provide a local workflow and dashboard around those components for a focused lightweight testing use case.
 
 ## Limitations
 
-InfraWatch is a developer-preview project.
+ClueStack is a developer-preview project.
 
 Current limitations include:
 
@@ -65,11 +65,11 @@ Current limitations include:
 - no claim of universal Kubernetes distribution or operating system compatibility;
 - primary validation around local Docker Desktop and Minikube-oriented workflows.
 
-Users should treat InfraWatch as a local development, testing, and learning tool rather than a production platform.
+Users should treat ClueStack as a local development, testing, and learning tool rather than a production platform.
 
 ## Non-goals
 
-InfraWatch does not currently aim to replace:
+ClueStack does not currently aim to replace:
 
 - Kubernetes;
 - kubectl;
@@ -88,7 +88,7 @@ InfraWatch does not currently aim to replace:
 - Garden;
 - DevSpace.
 
-InfraWatch also does not currently aim to provide:
+ClueStack also does not currently aim to provide:
 
 - a hosted multi-user service;
 - production-grade access control;
@@ -98,7 +98,7 @@ InfraWatch also does not currently aim to provide:
 
 ## Future direction
 
-One possible future direction is a limited user-workload workflow where a user can provide a container image or Kubernetes manifests and inspect the resulting rollout, health, metrics, logs, and alerts through InfraWatch.
+One possible future direction is a limited user-workload workflow where a user can provide a container image or Kubernetes manifests and inspect the resulting rollout, health, metrics, logs, and alerts through ClueStack.
 
 That capability is not implemented as a general product promise today. Before implementing it, the project should define safe input validation, namespace boundaries, cleanup behavior, ownership rules, and failure handling.
 

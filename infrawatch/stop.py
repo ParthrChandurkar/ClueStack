@@ -1,4 +1,4 @@
-"""Safe local Kubernetes shutdown orchestration for the InfraWatch CLI."""
+"""Safe local Kubernetes shutdown orchestration for the ClueStack CLI."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class StopError(RuntimeError):
 
 
 class Stopper:
-    """Remove InfraWatch app runtime resources without touching the Terraform foundation."""
+    """Remove ClueStack app runtime resources without touching the Terraform foundation."""
 
     OBSERVABILITY_HELM_RELEASES = ("infrawatch-alloy", "infrawatch-loki")
     OBSERVABILITY_GENERATED_OBJECTS = (
@@ -52,7 +52,7 @@ class Stopper:
     def stop(self, options: StopOptions) -> int:
         """Run the stop workflow and print a concise report."""
 
-        print("InfraWatch Stop\n")
+        print("ClueStack Stop\n")
         try:
             self._stop(options)
         except StopError as exc:
@@ -61,7 +61,7 @@ class Stopper:
             return 1
 
         self._print_steps()
-        print("\nInfraWatch application resources are stopped.")
+        print("\nClueStack application resources are stopped.")
         print("Terraform foundation, Terraform state, and the Minikube cluster were preserved.")
         return 0
 
@@ -74,10 +74,10 @@ class Stopper:
 
         namespace = self.runner.run(["kubectl", "get", "namespace", options.namespace], cwd=self.repo_root, timeout=20)
         if namespace.returncode != 0:
-            self._record(True, "InfraWatch namespace", f"{options.namespace} is absent; nothing to delete")
+            self._record(True, "ClueStack namespace", f"{options.namespace} is absent; nothing to delete")
             self._verify_terraform_state(options.namespace, "Terraform state after stop")
             return
-        self._record(True, "InfraWatch namespace", f"{options.namespace} exists")
+        self._record(True, "ClueStack namespace", f"{options.namespace} exists")
 
         if options.remove_observability:
             self._remove_observability(options.namespace)
@@ -99,8 +99,8 @@ class Stopper:
         if self.repo_root is None:
             raise StopError(
                 "Runtime resources",
-                "InfraWatch runtime resources could not be found",
-                "Run from a source checkout or reinstall the InfraWatch package.",
+                "ClueStack runtime resources could not be found",
+                "Run from a source checkout or reinstall the ClueStack package.",
             )
         try:
             validate_runtime_root(self.repo_root)
@@ -171,7 +171,7 @@ class Stopper:
         if deleted.returncode != 0:
             raise StopError(
                 "Kustomize delete",
-                "could not delete InfraWatch app resources",
+                "could not delete ClueStack app resources",
                 self._command_output(deleted),
             )
         self._record(

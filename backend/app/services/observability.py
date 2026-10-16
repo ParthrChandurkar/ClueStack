@@ -23,7 +23,7 @@ from app.schemas import AlertsResponse, AlertSummary, LogLine, LogsResponse, Met
 
 PROMETHEUS_CACHE_EVENTS = Counter(
     "infrawatch_prometheus_cache_events_total",
-    "Prometheus metrics cache events in the InfraWatch backend.",
+    "Prometheus metrics cache events in the ClueStack backend.",
     ["event"],
 )
 
@@ -289,7 +289,7 @@ class LokiClient:
         return query
 
     def _safe_label_value(self, value: str, *, field: str) -> str:
-        """Validate exact-match Loki label values used by InfraWatch queries."""
+        """Validate exact-match Loki label values used by ClueStack queries."""
 
         if not LOG_LABEL_VALUE_PATTERN.fullmatch(value):
             raise ValueError(f"invalid {field} label")

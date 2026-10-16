@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read-only health checks for the local InfraWatch Kubernetes environment.
+# Read-only health checks for the local ClueStack Kubernetes environment.
 
 set -euo pipefail
 
@@ -105,7 +105,7 @@ print_problem_pods() {
   fi
 }
 
-echo "InfraWatch Health Check"
+echo "ClueStack Health Check"
 echo "-----------------------"
 
 if ! command_exists kubectl; then
@@ -130,9 +130,9 @@ else
 fi
 
 if kubectl_quiet get namespace "${NAMESPACE}"; then
-  pass "InfraWatch namespace exists: ${NAMESPACE}"
+  pass "ClueStack namespace exists: ${NAMESPACE}"
 else
-  fail "InfraWatch namespace missing: ${NAMESPACE}"
+  fail "ClueStack namespace missing: ${NAMESPACE}"
   echo "Health check finished with ${FAILURES} failure(s)."
   exit 1
 fi

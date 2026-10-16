@@ -2,7 +2,7 @@
   "annotations": {
     "list": []
   },
-  "description": "InfraWatch HPA dashboard showing current replicas, desired replicas, and backend CPU utilization.",
+  "description": "ClueStack HPA dashboard showing current replicas, desired replicas, and backend CPU utilization.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -133,7 +133,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "InfraWatch HPA Overview",
+  "title": "ClueStack HPA Overview",
   "uid": "infrawatch-hpa-overview",
   "version": 1,
   "weekStart": ""

@@ -1,4 +1,4 @@
-# Terraform foundation for InfraWatch on a local kubeconfig-backed cluster.
+# Terraform foundation for ClueStack on a local kubeconfig-backed cluster.
 # This intentionally uses only the Kubernetes provider. No cloud providers are used.
 terraform {
   required_version = ">= 1.6.0"
@@ -32,7 +32,7 @@ resource "kubernetes_namespace_v1" "infrawatch" {
       "infrawatch.io/ownership" = "terraform-foundation"
     })
     annotations = {
-      "infrawatch.io/purpose" = "Local Kubernetes boundary for InfraWatch application and observability resources."
+      "infrawatch.io/purpose" = "Local Kubernetes boundary for ClueStack application and observability resources."
     }
   }
 }
@@ -43,7 +43,7 @@ resource "kubernetes_service_account_v1" "backend" {
     namespace = kubernetes_namespace_v1.infrawatch.metadata[0].name
     labels    = local.common_labels
     annotations = {
-      "infrawatch.io/purpose" = "Service account used by the InfraWatch backend inside local Kubernetes."
+      "infrawatch.io/purpose" = "Service account used by the ClueStack backend inside local Kubernetes."
     }
   }
 }
@@ -53,7 +53,7 @@ resource "kubernetes_cluster_role_v1" "local_reader" {
     name   = var.cluster_role_name
     labels = local.common_labels
     annotations = {
-      "infrawatch.io/purpose" = "Read-only local cluster visibility for InfraWatch status, events, pods, nodes, and logs."
+      "infrawatch.io/purpose" = "Read-only local cluster visibility for ClueStack status, events, pods, nodes, and logs."
     }
   }
 
@@ -113,7 +113,7 @@ resource "kubernetes_role_v1" "deployer" {
     namespace = kubernetes_namespace_v1.infrawatch.metadata[0].name
     labels    = local.common_labels
     annotations = {
-      "infrawatch.io/purpose" = "Namespace-scoped workload management for InfraWatch-created lightweight app deployments."
+      "infrawatch.io/purpose" = "Namespace-scoped workload management for ClueStack-created lightweight app deployments."
     }
   }
 
@@ -162,7 +162,7 @@ resource "kubernetes_resource_quota_v1" "infrawatch" {
     namespace = kubernetes_namespace_v1.infrawatch.metadata[0].name
     labels    = local.common_labels
     annotations = {
-      "infrawatch.io/purpose" = "Keeps the local InfraWatch namespace bounded on developer machines."
+      "infrawatch.io/purpose" = "Keeps the local ClueStack namespace bounded on developer machines."
     }
   }
 
@@ -184,7 +184,7 @@ resource "kubernetes_config_map_v1" "backend_config" {
     namespace = kubernetes_namespace_v1.infrawatch.metadata[0].name
     labels    = local.common_labels
     annotations = {
-      "infrawatch.io/purpose" = "Non-secret runtime configuration for the InfraWatch backend."
+      "infrawatch.io/purpose" = "Non-secret runtime configuration for the ClueStack backend."
     }
   }
 

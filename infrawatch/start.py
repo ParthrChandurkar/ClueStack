@@ -1,4 +1,4 @@
-"""Local Kubernetes startup orchestration for the InfraWatch CLI."""
+"""Local Kubernetes startup orchestration for the ClueStack CLI."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class Step:
 
 @dataclass(frozen=True)
 class FoundationResource:
-    """One Terraform-owned InfraWatch foundation resource."""
+    """One Terraform-owned ClueStack foundation resource."""
 
     address: str
     import_id: str
@@ -116,7 +116,7 @@ class Starter:
     def start(self, options: StartOptions) -> int:
         """Run the startup workflow and print a concise report."""
 
-        print("InfraWatch Start\n")
+        print("ClueStack Start\n")
         try:
             dashboard_url = self._start(options)
         except StartError as exc:
@@ -126,7 +126,7 @@ class Starter:
             return 1
 
         self._print_steps()
-        print("\nInfraWatch is running.")
+        print("\nClueStack is running.")
         if dashboard_url:
             print(f"Dashboard: {dashboard_url}")
         else:
@@ -138,8 +138,8 @@ class Starter:
         if self.repo_root is None:
             raise StartError(
                 "Runtime resources",
-                "InfraWatch runtime resources could not be resolved",
-                "Reinstall InfraWatch or run from a complete source checkout.",
+                "ClueStack runtime resources could not be resolved",
+                "Reinstall ClueStack or run from a complete source checkout.",
             )
         try:
             validate_runtime_root(self.repo_root)
@@ -516,7 +516,7 @@ class Starter:
             last_failures = [f"{result.name}: {result.message}" for result in failures[:3]]
             if attempt < 3:
                 time.sleep(5)
-        raise StartError("Status validation", "InfraWatch components are not healthy", "; ".join(last_failures))
+        raise StartError("Status validation", "ClueStack components are not healthy", "; ".join(last_failures))
 
     def _dashboard_url(self, namespace: str) -> str:
         result = self.runner.run(

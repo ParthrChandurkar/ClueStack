@@ -1,7 +1,7 @@
 {
   "name": "infrawatch-frontend",
   "version": "0.1.0",
-  "description": "React dashboard for InfraWatch deployments, metrics, and logs.",
+  "description": "React dashboard for ClueStack deployments, metrics, and logs.",
   "private": true,
   "type": "module",
   "scripts": {

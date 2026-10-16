@@ -1,4 +1,4 @@
-"""Tests for the InfraWatch package CLI foundation."""
+"""Tests for the ClueStack package CLI foundation."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from infrawatch.runtime_resources import (
     ResourceError,
     materialize_package_resources,
     resolve_runtime_root,
+    user_cache_root,
     validate_runtime_root,
 )
 from infrawatch.start import StartOptions, run_start
@@ -37,7 +38,7 @@ def test_help_command_shows_available_lifecycle_commands() -> None:
     result = run_cli("--help")
 
     assert result.returncode == 0
-    assert "InfraWatch local Kubernetes deployment and observability CLI" in result.stdout
+    assert "ClueStack local Kubernetes deployment and observability CLI" in result.stdout
     assert "start" in result.stdout
     assert "stop" in result.stdout
     assert "status" in result.stdout
@@ -50,7 +51,7 @@ def test_version_command_uses_package_version() -> None:
     result = run_cli("--version")
 
     assert result.returncode == 0
-    assert result.stdout.strip() == f"InfraWatch {__version__}"
+    assert result.stdout.strip() == f"ClueStack {__version__}"
 
 
 def test_subprocess_runner_uses_utf8_replace_decoding(monkeypatch) -> None:
@@ -255,7 +256,7 @@ def test_doctor_warning_does_not_fail(monkeypatch, capsys, tmp_path) -> None:
 
 
 def healthy_status_runner() -> FakeRunner:
-    """Return a fake runner for a healthy InfraWatch Kubernetes environment."""
+    """Return a fake runner for a healthy ClueStack Kubernetes environment."""
 
     return FakeRunner(
         {
@@ -398,7 +399,7 @@ def test_status_unavailable_kubernetes(monkeypatch, capsys) -> None:
 
 
 def test_status_missing_namespace(monkeypatch, capsys) -> None:
-    """Status fails clearly when the InfraWatch namespace does not exist."""
+    """Status fails clearly when the ClueStack namespace does not exist."""
 
     all_commands_available(monkeypatch)
     runner = FakeRunner(
@@ -701,7 +702,7 @@ def test_stop_noops_when_namespace_absent_after_state_check(monkeypatch, capsys,
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert "[PASS] InfraWatch namespace: infrawatch is absent; nothing to delete" in output
+    assert "[PASS] ClueStack namespace: infrawatch is absent; nothing to delete" in output
     assert ("kubectl", "delete", "-k", "k8s", "--ignore-not-found=true") not in runner.calls
 
 
@@ -756,7 +757,7 @@ def test_start_successful_sequence(monkeypatch, capsys, tmp_path) -> None:
 
     output = capsys.readouterr().out
     assert exit_code == 0
-    assert "InfraWatch is running." in output
+    assert "ClueStack is running." in output
     assert "Dashboard: http://127.0.0.1:3000" in output
     assert ("terraform", "-chdir=terraform", "apply", "-auto-approve", "-var=kube_context=minikube") in runner.calls
     assert ("kubectl", "apply", "-k", "k8s") in runner.calls
@@ -1040,6 +1041,15 @@ def test_runtime_resolution_works_without_repository(monkeypatch, tmp_path) -> N
     assert root.is_relative_to(tmp_path / "cache")
     assert (root / "terraform" / "main.tf").exists()
     assert (root / "k8s" / "kustomization.yaml").exists()
+
+
+def test_windows_resource_cache_keeps_established_compatibility_path(monkeypatch, tmp_path) -> None:
+    """The ClueStack rebrand must not orphan the established installed-resource cache."""
+
+    monkeypatch.delenv("INFRAWATCH_RESOURCE_CACHE", raising=False)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+
+    assert user_cache_root() == tmp_path / "InfraWatch" / "resources"
 
 
 def test_runtime_resolution_prefers_repository_when_available(monkeypatch, tmp_path) -> None:

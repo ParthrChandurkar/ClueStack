@@ -1,4 +1,4 @@
-"""Measure InfraWatch deployment request duration.
+"""Measure ClueStack deployment request duration.
 
 This measures the platform-facing deployment duration, not the whole human
 manual baseline. In real Kubernetes mode, `/deploy` includes kubectl apply,
@@ -17,7 +17,7 @@ from urllib.request import Request, urlopen
 def main() -> None:
     """POST one deployment request and print elapsed time plus API response."""
 
-    parser = argparse.ArgumentParser(description="Measure InfraWatch deployment duration.")
+    parser = argparse.ArgumentParser(description="Measure ClueStack deployment duration.")
     parser.add_argument("--api-base", default="http://localhost:8000", help="FastAPI base URL.")
     parser.add_argument("--name", default="measurement-api", help="Service name.")
     parser.add_argument("--image", default="docker.io/parthchn178/infrawatch-backend:latest", help="Container image.")

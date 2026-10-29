@@ -60,6 +60,36 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("INFRAWATCH_REDIS_CACHE_TTL", "REDIS_CACHE_TTL"),
     )
 
+    github_api_timeout_seconds: float = Field(default=10.0, ge=1.0, le=30.0)
+    github_analysis_timeout_seconds: float = Field(default=20.0, ge=2.0, le=60.0)
+    github_max_tree_entries: int = Field(default=2_000, ge=100, le=10_000)
+    github_max_files: int = Field(default=40, ge=1, le=100)
+    github_max_file_bytes: int = Field(default=256_000, ge=1_024, le=1_000_000)
+    github_max_total_bytes: int = Field(default=1_000_000, ge=10_000, le=5_000_000)
+    github_max_api_response_bytes: int = Field(default=5_000_000, ge=10_000, le=20_000_000)
+    local_analysis_max_request_bytes: int = Field(default=1_500_000, ge=10_000, le=6_000_000)
+    local_analysis_timeout_seconds: float = Field(default=5.0, ge=1.0, le=30.0)
+    container_build_execution_enabled: bool = False
+    container_build_timeout_seconds: int = Field(default=600, ge=30, le=3_600)
+    container_build_memory_megabytes: int = Field(default=512, ge=128, le=8_192)
+    container_build_cpu_limit: float = Field(default=0.5, ge=0.1, le=8.0)
+    container_build_storage_megabytes: int = Field(default=1_024, ge=256, le=20_480)
+    container_build_process_limit: int = Field(default=64, ge=16, le=1_024)
+    container_build_max_log_bytes: int = Field(default=2_000, ge=500, le=2_000)
+    container_build_max_concurrent_jobs: int = Field(default=1, ge=1, le=4)
+    container_build_max_queued_jobs: int = Field(default=4, ge=1, le=20)
+    container_build_worker_runtime: str = Field(default="disabled", pattern=r"^disabled$")
+    container_build_network_policy: str = Field(default="disabled", pattern=r"^disabled$")
+    repository_analysis_max_age_seconds: int = Field(default=86_400, ge=60, le=2_592_000)
+    source_snapshots_file: str = "/tmp/infrawatch/source-snapshots.json"
+    source_snapshots_root: str = "/tmp/infrawatch/source-snapshots"
+    source_snapshot_max_files: int = Field(default=250, ge=1, le=2_000)
+    source_snapshot_max_file_bytes: int = Field(default=1_000_000, ge=1_024, le=10_000_000)
+    source_snapshot_max_total_bytes: int = Field(default=25_000_000, ge=10_000, le=250_000_000)
+    source_snapshot_max_request_bytes: int = Field(default=30_000_000, ge=10_000, le=300_000_000)
+    source_snapshot_timeout_seconds: float = Field(default=30.0, ge=2.0, le=120.0)
+    source_snapshot_retention_seconds: int = Field(default=604_800, ge=300, le=31_536_000)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_prefix="INFRAWATCH_",

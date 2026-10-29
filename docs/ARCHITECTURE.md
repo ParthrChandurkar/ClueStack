@@ -74,6 +74,122 @@ React frontend
 
 Demo Mode is safe for local UI exploration and portfolio screenshots. It does not run Kubernetes workloads.
 
+## Public GitHub repository analysis
+
+Existing `github_repository` projects can request read-only analysis through:
+
+```text
+React repository panel
+  -> POST /projects/{project_id}/repository-analysis
+  -> official api.github.com endpoints
+  -> bounded metadata, branch, tree, and recognized-file retrieval
+  -> evidence-backed stack findings
+  -> sanitized repository_analysis report
+```
+
+The analyzer recognizes Docker, Compose, Node, Python, Kubernetes, and Terraform configuration. Findings identify
+their evidence paths and distinguish detected, missing, unknown, and unsupported evidence. Tree entries, files,
+individual file size, total retrieved content, per-request time, and total analysis duration are bounded.
+
+This capability supports public repositories only. It does not clone repositories, follow repository-provided
+instructions, execute code, build images, deploy the analyzed application, or access private repository credentials.
+Browser Demo Mode does not fabricate repository-analysis results.
+
+## Local repository analysis
+
+Existing `local` projects can analyze a folder selected explicitly in the browser:
+
+```text
+Browser directory picker
+  -> recognized non-sensitive UTF-8 configuration files only
+  -> POST /projects/{project_id}/local-repository-analysis
+  -> bounded local source adapter
+  -> shared repository analyzer
+  -> sanitized repository_analysis report
+```
+
+The browser preserves relative paths but never sends an absolute local path. It excludes generated and dependency
+directories, credential-like paths, private keys, certificates, unsupported files, and files outside the configured
+count and byte limits. The backend repeats path, sensitivity, type, count, byte, and duration validation rather than
+trusting browser filtering. Raw uploaded file contents are used only for the current request and are not stored in
+project records or reports.
+
+Local and public GitHub analysis produce the same normalized finding and readiness models while retaining a
+`local_upload` or `github_public` source identifier. Local analysis does not discover the workstation filesystem,
+follow symlinks, unpack archives, run code, install dependencies, build images, or deploy the selected application.
+Browser Demo Mode does not simulate local analysis.
+
+Repository readiness is a separate deterministic stage:
+
+```text
+persisted repository_analysis report
+  -> POST /projects/{project_id}/repository-readiness
+  -> containerization, Kubernetes, and infrastructure rule sets
+  -> sanitized repository_readiness report
+```
+
+The readiness endpoint uses a selected analysis report or the latest compatible successful/partial report. It does
+not contact GitHub or reread local files. Missing, incompatible, cross-project, or older-than-configured analysis evidence is rejected
+explicitly and recorded as a failed readiness attempt.
+
+Status calculation is conservative:
+
+- incomplete or truncated source evidence makes each dimension and the overall result `unknown`;
+- missing blocking prerequisites makes a dimension `not_ready`;
+- incomplete required service or port evidence makes Kubernetes `partially_ready`;
+- optional items such as health probes, resource policies, CI/CD, and observability are recommendations and do not by
+  themselves make a complete core configuration not ready;
+- overall status gives `unknown` precedence, followed by `not_ready`, `partially_ready`, and `ready`.
+
+These statuses describe static configuration evidence only. ClueStack does not infer image availability, manifest
+validity, build success, rollout success, runtime health, or external-service availability from readiness assessment.
+
+## Container build orchestration boundary
+
+### Immutable source snapshots
+
+The source-snapshot service captures either an exact public GitHub commit through `api.github.com` or the exact bounded
+UTF-8 files submitted by the browser for a local project. It rejects unsafe paths, traversal, duplicate normalized
+paths, unsupported binary content, credentials, generated/dependency trees, and configured file/size/time limits.
+GitHub branches and tags are resolved to a 40-character commit SHA before any tree or blob is fetched; truncated trees
+are rejected because they cannot produce an exact snapshot.
+
+Each published snapshot contains source identity, a canonical manifest ordered by relative path, per-file SHA-256
+hashes, and one overall SHA-256 hash over format version, source identity, and every included path, size, and file hash.
+Timestamps, lifecycle state, and storage paths are deliberately excluded from the content hash. Publication writes to
+a generated staging directory and atomically renames it only after all content and the manifest are complete. Metadata
+is stored atomically in JSON and survives restart.
+
+The filesystem implementation requests read-only permissions after publication and verifies every file before build
+preparation. This detects ordinary tampering but is not an absolute immutability guarantee against an administrator or
+storage system that can change permissions or bytes. Raw source content is never returned by metadata APIs or copied
+into reports. Available snapshots expire after the configured retention interval; referenced build snapshots cannot be
+deleted. The supported lifecycle is `creating`, `available`, `failed`, `expired`, and `deleted`.
+
+Container build requests use persisted analysis and readiness reports through project-scoped eligibility and build
+APIs. Validation binds the request to explicit analysis/readiness report IDs, an immutable source snapshot identifier,
+a detected Dockerfile, repository-root context, a validated image name/tag, and explicit approval. Build attempts are
+recorded as `container_build` reports and never imply deployment, runtime health, or rollout success.
+
+The backend has separate coordinator, worker-provider, isolation-runtime, lifecycle, result-validation, bounded-log,
+and cleanup contracts. Worker requests contain UUID identities, verified snapshot metadata, relative build paths,
+validated image coordinates, conservative resource limits, a disabled-network policy, timeout, and correlation ID.
+They contain no host source path. The snapshot service independently re-verifies project association, expiry, format,
+and content integrity before a capable runtime may start; incomplete local submissions are not complete build contexts.
+
+The resource policy defaults to one concurrent job, four queued jobs, 0.5 CPU, 512 MiB memory, 1 GiB temporary storage,
+64 processes, a ten-minute timeout, and 2,000 bytes of persisted logs. Worker output is bounded and sanitized for
+common credentials and host paths. Success additionally requires matching request identities, valid timestamps, zero
+exit status, an immutable `sha256` image digest, and successful cleanup. Lifecycle states are `queued`, `starting`,
+`running`, `succeeded`, `failed`, `cancelled`, `timed_out`, `rejected`, and `cleanup_failed`. Cancellation is unavailable
+unless a runtime can terminate and clean the complete isolated environment.
+
+The production runtime remains deliberately unavailable. The inspected development environment has no verified VM or
+sandbox runtime, and a normal Docker container is not treated as a complete security boundary. ClueStack does not use
+the backend Docker client, Docker socket, privileged containers, arbitrary host mounts, host networking, or repository
+commands. Eligibility therefore reports a worker blocker and approved attempts finish as `rejected`; no Docker or shell
+command is invoked. Fake-runtime tests validate contracts and lifecycle behavior only, not real isolation.
+
 ## Real Local Kubernetes Mode
 
 ```text

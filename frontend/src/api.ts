@@ -2,13 +2,22 @@
 import type {
   AuditLogEntry,
   AlertsResponse,
+  ContainerBuildEligibilityPayload,
+  ContainerBuildEligibilityResult,
+  ContainerBuildLogsResponse,
+  ContainerBuildRecord,
   DeployPayload,
   DeploymentRecord,
   DeploymentReportRecord,
   LogsResponse,
+  LocalRepositoryAnalysisPayload,
   ProjectCreate,
   ProjectRecord,
+  RepositoryAnalysisResult,
+  RepositoryReadinessResult,
   ServiceMetrics,
+  SourceSnapshotRecord,
+  SourceSnapshotVerification,
   WorkloadHealth,
 } from "./types";
 import {
@@ -74,7 +83,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new ApiResponseError(body.detail ?? response.statusText, response.status);
+    const detail = typeof body.detail === "string"
+      ? body.detail
+      : Array.isArray(body.detail)
+        ? body.detail
+            .map((item: unknown) => (
+              typeof item === "object" && item !== null && "msg" in item && typeof item.msg === "string"
+                ? item.msg
+                : ""
+            ))
+            .filter(Boolean)
+            .join("; ")
+        : response.statusText;
+    throw new ApiResponseError(detail || response.statusText, response.status);
   }
 
   return response.json() as Promise<T>;
@@ -137,6 +158,119 @@ export function listProjectReports(projectId: string): Promise<DeploymentReportR
     () => request<DeploymentReportRecord[]>(`/projects/${projectId}/reports`),
     () => listDemoReports(projectId),
   );
+}
+
+export function analyzeRepository(projectId: string, branch?: string): Promise<RepositoryAnalysisResult> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Public GitHub analysis is unavailable in browser Demo Mode."));
+  }
+  return request<RepositoryAnalysisResult>(`/projects/${projectId}/repository-analysis`, {
+    method: "POST",
+    body: JSON.stringify({ branch: branch?.trim() || null }),
+  });
+}
+
+export function analyzeLocalRepository(
+  projectId: string,
+  payload: LocalRepositoryAnalysisPayload,
+): Promise<RepositoryAnalysisResult> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Local repository analysis is unavailable in browser Demo Mode."));
+  }
+  return request<RepositoryAnalysisResult>(`/projects/${projectId}/local-repository-analysis`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function assessRepositoryReadiness(
+  projectId: string,
+  analysisReportId?: string,
+): Promise<RepositoryReadinessResult> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Repository readiness assessment is unavailable in browser Demo Mode."));
+  }
+  return request<RepositoryReadinessResult>(`/projects/${projectId}/repository-readiness`, {
+    method: "POST",
+    body: JSON.stringify({ analysis_report_id: analysisReportId || null }),
+  });
+}
+
+export function listSourceSnapshots(projectId: string): Promise<SourceSnapshotRecord[]> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Source snapshots are unavailable in browser Demo Mode."));
+  }
+  return request<SourceSnapshotRecord[]>(`/projects/${projectId}/source-snapshots`);
+}
+
+export function createSourceSnapshot(
+  projectId: string,
+  payload: {
+    reference?: string | null;
+    analysis_report_id?: string | null;
+    source_label?: string | null;
+    submission_complete?: boolean;
+    files?: LocalRepositoryAnalysisPayload["files"];
+  },
+): Promise<SourceSnapshotRecord> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Source snapshots are unavailable in browser Demo Mode."));
+  }
+  return request<SourceSnapshotRecord>(`/projects/${projectId}/source-snapshots`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function verifySourceSnapshot(projectId: string, snapshotId: string): Promise<SourceSnapshotVerification> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Source snapshot verification is unavailable in browser Demo Mode."));
+  }
+  return request<SourceSnapshotVerification>(`/projects/${projectId}/source-snapshots/${snapshotId}/verify`, {
+    method: "POST",
+  });
+}
+
+export function deleteSourceSnapshot(projectId: string, snapshotId: string): Promise<SourceSnapshotRecord> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Source snapshot deletion is unavailable in browser Demo Mode."));
+  }
+  return request<SourceSnapshotRecord>(`/projects/${projectId}/source-snapshots/${snapshotId}`, {
+    method: "DELETE",
+  });
+}
+
+export function validateContainerBuild(
+  projectId: string,
+  payload: ContainerBuildEligibilityPayload,
+): Promise<ContainerBuildEligibilityResult> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Container builds are unavailable in browser Demo Mode."));
+  }
+  return request<ContainerBuildEligibilityResult>(`/projects/${projectId}/container-build-eligibility`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createContainerBuild(
+  projectId: string,
+  payload: ContainerBuildEligibilityPayload & { approved: boolean },
+): Promise<ContainerBuildRecord> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Container builds are unavailable in browser Demo Mode."));
+  }
+  return request<ContainerBuildRecord>(`/projects/${projectId}/container-builds`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getContainerBuildLogs(projectId: string, buildId: string): Promise<ContainerBuildLogsResponse> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Container build logs are unavailable in browser Demo Mode."));
+  }
+  return request<ContainerBuildLogsResponse>(`/projects/${projectId}/container-builds/${buildId}/logs`);
 }
 
 export function deployService(payload: DeployPayload): Promise<{ deployment: DeploymentRecord }> {

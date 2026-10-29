@@ -142,6 +142,19 @@ infrawatch stop --remove-observability
 
 ## 3. Understand Demo Mode
 
+Repository source snapshots require the backend and are unavailable in browser Demo Mode. For a configured backend,
+snapshot metadata defaults to `/tmp/infrawatch/source-snapshots.json` and content to
+`/tmp/infrawatch/source-snapshots`; override these with `INFRAWATCH_SOURCE_SNAPSHOTS_FILE` and
+`INFRAWATCH_SOURCE_SNAPSHOTS_ROOT` when those locations are not durable or writable. Snapshot creation never runs
+repository code and does not enable container execution. The default retention is seven days, with limits of 250 text
+files, 1 MB per file, and 25 MB total content.
+
+Container build execution is also disabled by default. ClueStack validates immutable inputs and exposes worker
+availability honestly, but this repository does not ship a verified sandbox runtime.
+`INFRAWATCH_CONTAINER_BUILD_WORKER_RUNTIME` and `INFRAWATCH_CONTAINER_BUILD_NETWORK_POLICY` currently accept only
+`disabled`; setting execution enabled does not bypass the unavailable-worker check. Fake-runtime tests are orchestration
+tests, not proof of production isolation.
+
 By default, Docker Compose keeps Kubernetes execution disabled:
 
 ```text
@@ -309,6 +322,19 @@ Port: 80
 In Demo Mode, this creates a simulated record.
 
 In Kubernetes mode, ClueStack applies a real Kubernetes Deployment and Service.
+
+## Analyze a local project folder
+
+With the frontend connected to the FastAPI backend, create or select a local project and open **Local Project
+Analysis**. Choose a project folder with the browser directory picker, review the recognized-file count and byte
+total, and select **Analyze selected folder**. The result shows detected configuration, evidence paths, missing
+prerequisites, warnings, and its persisted report identifier. You can then assess readiness from that report.
+
+The picker sends only recognized, bounded text configuration with paths relative to the selected folder. ClueStack
+does not receive the absolute folder path and does not upload dependency directories, generated output, environment
+files, credentials, private keys, certificates, arbitrary source files, or archives. Analysis and readiness are static
+evidence checks: they do not execute the project or prove that it builds or deploys. This workflow is unavailable in
+browser Demo Mode and requires a browser that supports directory selection.
 
 ---
 

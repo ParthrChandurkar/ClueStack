@@ -33,6 +33,22 @@ The installed command, Python package, environment variables, Kubernetes resourc
   - `infrawatch stop`
 - Runs a React dashboard for deployment, workload, metrics, logs, and alerts views.
 - Runs a FastAPI backend for local deployment operations and observability APIs.
+- Analyzes recognized configuration in existing public GitHub repository projects through the official GitHub API,
+  with bounded read-only retrieval and evidence paths. This analysis does not clone, build, or execute repository code.
+- Analyzes recognized text configuration from a browser-selected local folder. Only relative paths and bounded
+  configuration contents are submitted; absolute paths, generated directories, credentials, and private-key files
+  are excluded, and uploaded contents are not retained in the analysis report.
+- Assesses containerization, Kubernetes, and infrastructure-integration readiness from a recent persisted repository
+  analysis. The assessment reports static prerequisites and unknowns; it does not claim build or deployment success.
+- Creates bounded, integrity-checked source snapshots from exact public GitHub commits or browser-submitted local text
+  files. Snapshots are stored outside the checkout and verified before build eligibility; local submissions are not
+  claimed to be complete repositories when filtering excludes files.
+- Validates container-build eligibility and persists explicit rejected build attempts. Actual image execution remains
+  disabled until a verified isolated build worker is configured; ClueStack never treats snapshot creation or static
+  Dockerfile detection as a successful image build.
+- Defines a capability-gated isolated-worker contract with conservative CPU, memory, storage, process, timeout, queue,
+  disabled-network, bounded-log, result-validation, and cleanup policies. Production execution remains unavailable
+  because no verified sandbox runtime is shipped; ClueStack does not fall back to the host Docker socket or shell.
 - Supports Docker Compose and Minikube-oriented local workflows.
 - Uses Terraform for Kubernetes foundation resources such as namespace, RBAC, ResourceQuota, ServiceAccount, and backend runtime ConfigMap.
 - Uses Kustomize for application runtime resources such as backend, frontend, PostgreSQL, Redis, HPA, Services, and ConfigMaps.
@@ -370,7 +386,11 @@ ClueStack is a developer preview. Current limitations include:
 - no universal Kubernetes distribution or operating system support claim;
 - primary validation around local Docker Desktop and Minikube-oriented workflows.
 
-Future work may explore a limited user-provided container image or Kubernetes manifest workflow, but arbitrary repository builds and automatic GitHub onboarding are not implemented today.
+Local folder analysis uses the browser directory picker and requires a compatible browser. It is static inspection,
+not server-side filesystem discovery, application execution, or proof that a build or deployment will succeed.
+Arbitrary repository builds, private-repository access, and automatic GitHub onboarding are not implemented today.
+The container-build API deliberately rejects execution in the default runtime: ClueStack does not mount the host
+Docker socket or execute repository Dockerfiles on the API host.
 
 ## Project boundaries and roadmap
 

@@ -416,6 +416,349 @@ a {
   line-height: 1.45;
 }
 
+.repository-analysis-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.repository-analysis-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.7fr) auto;
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.repository-analysis-form label {
+  display: grid;
+  gap: 0.45rem;
+  color: #9aa4b2;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.repository-analysis-form label span {
+  font-weight: 500;
+}
+
+.repository-analysis-form input,
+.repository-analysis-form select {
+  width: 100%;
+}
+
+.repository-analysis-form button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.repository-identity,
+.analysis-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #26313d;
+  border-radius: 12px;
+  background: rgba(8, 17, 29, 0.6);
+}
+
+.repository-identity a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #4da3ff;
+  overflow-wrap: anywhere;
+}
+
+.repository-identity {
+  justify-content: space-between;
+}
+
+.repository-identity > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.repository-identity button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.analysis-results {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.build-approval {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #c7d0dc;
+}
+
+.build-approval input {
+  width: auto;
+}
+
+.build-logs {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid #26313d;
+  border-radius: 10px;
+  background: #07101c;
+  color: #c7d0dc;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.snapshot-panel {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(7, 15, 29, 0.42);
+}
+
+.snapshot-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.snapshot-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.snapshot-card > div:first-child,
+.snapshot-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.snapshot-card code {
+  overflow-wrap: anywhere;
+}
+
+.snapshot-actions {
+  justify-content: flex-start;
+}
+
+.analysis-findings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.analysis-finding {
+  padding: 0.85rem;
+  border: 1px solid #26313d;
+  border-radius: 12px;
+  background: rgba(8, 17, 29, 0.45);
+}
+
+.analysis-finding > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.analysis-finding p,
+.analysis-finding ul,
+.analysis-notes ul {
+  margin: 0.55rem 0 0;
+}
+
+.analysis-finding ul,
+.analysis-notes ul {
+  padding-left: 1.1rem;
+}
+
+.analysis-finding code {
+  overflow-wrap: anywhere;
+}
+
+.analysis-status,
+.finding-status {
+  display: inline-flex;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(154, 164, 178, 0.15);
+  color: #9aa4b2;
+}
+
+.analysis-status.complete,
+.finding-status.detected {
+  background: rgba(61, 220, 151, 0.12);
+  color: #3ddc97;
+}
+
+.analysis-status.partial,
+.finding-status.unknown {
+  background: rgba(245, 185, 66, 0.13);
+  color: #f5b942;
+}
+
+.finding-status.missing,
+.finding-status.unsupported {
+  background: rgba(255, 95, 109, 0.12);
+  color: #ff5f6d;
+}
+
+.analysis-notes,
+.empty-analysis {
+  padding: 0.8rem 0.9rem;
+  border-left: 3px solid #9aa4b2;
+  border-radius: 8px;
+  background: rgba(154, 164, 178, 0.08);
+}
+
+.analysis-notes.warning {
+  border-left-color: #f5b942;
+}
+
+.readiness-results {
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 0.3rem;
+}
+
+.readiness-heading,
+.readiness-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.readiness-heading h3 {
+  margin: 0.15rem 0 0;
+}
+
+.readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.readiness-card {
+  min-width: 0;
+  padding: 0.9rem;
+  border: 1px solid #26313d;
+  border-radius: 12px;
+  background: rgba(8, 17, 29, 0.55);
+}
+
+.readiness-card > p {
+  color: #b8c1cc;
+  line-height: 1.5;
+}
+
+.readiness-status {
+  display: inline-flex;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.readiness-status.ready {
+  color: #3ddc97;
+  background: rgba(61, 220, 151, 0.12);
+}
+
+.readiness-status.partially_ready,
+.readiness-status.unknown {
+  color: #f5b942;
+  background: rgba(245, 185, 66, 0.13);
+}
+
+.readiness-status.not_ready {
+  color: #ff5f6d;
+  background: rgba(255, 95, 109, 0.12);
+}
+
+.readiness-findings {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.readiness-finding {
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid #4da3ff;
+  border-radius: 7px;
+  background: rgba(77, 163, 255, 0.06);
+}
+
+.readiness-finding.warning {
+  border-left-color: #f5b942;
+}
+
+.readiness-finding.error {
+  border-left-color: #ff5f6d;
+}
+
+.readiness-finding span {
+  color: #9aa4b2;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.readiness-finding p {
+  margin: 0.25rem 0;
+  line-height: 1.4;
+}
+
+.readiness-finding code {
+  display: block;
+  color: #9db5d1;
+  overflow-wrap: anywhere;
+}
+
+.readiness-list {
+  margin-top: 0.7rem;
+}
+
+.readiness-list strong {
+  font-size: 0.78rem;
+}
+
+.readiness-list ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: #b8c1cc;
+}
+
+@media (max-width: 860px) {
+  .repository-analysis-form {
+    grid-template-columns: 1fr;
+  }
+
+  .readiness-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .project-summary code {
   grid-column: 2;
   grid-row: 1 / span 2;

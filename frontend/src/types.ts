@@ -9,8 +9,59 @@ export type DeploymentStatus =
   | "Deleted";
 export type ProjectMode = "local" | "github_repository";
 export type ProjectSourceType = "manual" | "github_public_readonly";
-export type DeploymentReportOperation = "deploy" | "delete" | "rollback" | "status_check" | "repository_analysis";
+export type DeploymentReportOperation =
+  | "deploy"
+  | "delete"
+  | "rollback"
+  | "status_check"
+  | "repository_analysis"
+  | "repository_readiness"
+  | "container_build";
 export type DeploymentReportStatus = "success" | "failure" | "partial" | "skipped";
+export type RepositoryFindingStatus = "detected" | "missing" | "unknown" | "unsupported";
+export type RepositoryRetrievalStatus = "complete" | "partial" | "failed";
+export type RepositoryAnalysisSource = "github_public" | "local_upload";
+
+export type SourceSnapshotStatus = "creating" | "available" | "failed" | "expired" | "deleted";
+
+export interface SourceSnapshotIdentity {
+  repository_url?: string | null;
+  owner?: string | null;
+  repository?: string | null;
+  commit_sha?: string | null;
+  resolved_reference?: string | null;
+  submission_id?: string | null;
+  submission_complete?: boolean | null;
+}
+
+export interface SourceSnapshotRecord {
+  id: string;
+  project_id: string;
+  source: RepositoryAnalysisSource;
+  source_identity: SourceSnapshotIdentity;
+  analysis_report_id?: string | null;
+  created_at: string;
+  expires_at?: string | null;
+  format_version: number;
+  included_files: Array<{ path: string; size: number; sha256: string }>;
+  exclusions: Array<{ reason: string; count: number }>;
+  file_count: number;
+  total_content_size: number;
+  integrity_hash?: string | null;
+  status: SourceSnapshotStatus;
+  integrity_verified: boolean;
+  storage_kind: string;
+  read_only_requested: boolean;
+  error?: string | null;
+}
+
+export interface SourceSnapshotVerification {
+  snapshot_id: string;
+  valid: boolean;
+  status: SourceSnapshotStatus;
+  integrity_hash?: string | null;
+  verified_at: string;
+}
 
 export interface ProjectCreate {
   name: string;
@@ -88,6 +139,157 @@ export interface DeploymentReportRecord {
   evidence: Record<string, unknown>;
   errors: DeploymentReportError[];
   created_at: string;
+}
+
+export interface RepositoryAnalysisFinding {
+  category: string;
+  status: RepositoryFindingStatus;
+  values: string[];
+  evidence_paths: string[];
+  detail: string;
+}
+
+export interface RepositoryAnalysisSignal {
+  id: string;
+  evidence_paths: string[];
+  detail: string;
+}
+
+export interface RepositoryAnalysisResult {
+  project_id: string;
+  source: RepositoryAnalysisSource;
+  source_label: string;
+  repository_url: string | null;
+  owner: string | null;
+  repository: string | null;
+  branch: string | null;
+  commit_sha: string | null;
+  retrieval_status: RepositoryRetrievalStatus;
+  tree_truncated: boolean;
+  tree_entries_seen: number;
+  files_retrieved: number;
+  content_bytes_retrieved: number;
+  findings: RepositoryAnalysisFinding[];
+  readiness_signals: RepositoryAnalysisSignal[];
+  missing_prerequisites: string[];
+  warnings: string[];
+  errors: string[];
+  report_id: string;
+  analyzed_at: string;
+}
+
+export type RepositoryReadinessStatus = "ready" | "partially_ready" | "not_ready" | "unknown";
+export type RepositoryReadinessSeverity = "info" | "warning" | "error";
+
+export interface RepositoryReadinessFinding {
+  id: string;
+  category: string;
+  severity: RepositoryReadinessSeverity;
+  description: string;
+  evidence_paths: string[];
+  required: boolean;
+}
+
+export interface RepositoryReadinessDimension {
+  id: "containerization" | "kubernetes" | "infrastructure";
+  status: RepositoryReadinessStatus;
+  explanation: string;
+  findings: RepositoryReadinessFinding[];
+  evidence_paths: string[];
+  missing_prerequisites: string[];
+  warnings: string[];
+  unknown_conditions: string[];
+}
+
+export interface RepositoryReadinessResult {
+  project_id: string;
+  analysis_source: RepositoryAnalysisSource;
+  analysis_report_id: string;
+  analysis_commit_sha: string | null;
+  overall_status: RepositoryReadinessStatus;
+  dimensions: RepositoryReadinessDimension[];
+  report_id: string;
+  assessed_at: string;
+}
+
+export interface LocalRepositoryAnalysisFile {
+  path: string;
+  content: string;
+}
+
+export interface LocalRepositoryAnalysisPayload {
+  source_label: string;
+  submission_complete: boolean;
+  files: LocalRepositoryAnalysisFile[];
+}
+
+export type ContainerBuildStatus =
+  | "pending"
+  | "validating"
+  | "queued"
+  | "building"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "rejected";
+export type ContainerBuildFindingStatus = "passed" | "warning" | "blocker";
+
+export interface ContainerBuildFinding {
+  code: string;
+  status: ContainerBuildFindingStatus;
+  message: string;
+  evidence_paths: string[];
+}
+
+export interface ContainerBuildEligibilityPayload {
+  analysis_report_id: string;
+  readiness_report_id: string;
+  source_snapshot_id: string | null;
+  dockerfile_path: string;
+  context_path: string;
+  image_name: string;
+  image_tag: string;
+}
+
+export interface ContainerBuildEligibilityResult extends ContainerBuildEligibilityPayload {
+  project_id: string;
+  eligible: boolean;
+  source: RepositoryAnalysisSource | null;
+  findings: ContainerBuildFinding[];
+  execution_available: boolean;
+  worker_availability: "available" | "unavailable";
+  network_policy: "disabled";
+}
+
+export interface ContainerBuildRecord {
+  id: string;
+  project_id: string;
+  status: ContainerBuildStatus;
+  source: RepositoryAnalysisSource | null;
+  source_snapshot_id: string | null;
+  analysis_report_id: string;
+  readiness_report_id: string;
+  dockerfile_path: string;
+  context_path: string;
+  image_name: string;
+  image_tag: string;
+  image_digest: string | null;
+  started_at: string;
+  completed_at: string | null;
+  duration_ms: number | null;
+  exit_status: number | null;
+  failure_reason: string | null;
+  worker_job_id: string | null;
+  result_validation: "passed" | "failed" | null;
+  cleanup_status: "succeeded" | "failed" | null;
+  report_id: string;
+}
+
+export interface ContainerBuildLogsResponse {
+  build_id: string;
+  status: ContainerBuildStatus;
+  logs: string;
+  truncated: boolean;
 }
 
 export interface MetricPoint {

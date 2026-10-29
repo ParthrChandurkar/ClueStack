@@ -6,22 +6,41 @@ FastAPI application state.
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from prometheus_client import Counter, Histogram
+from pydantic import ValidationError
 
 from app.schemas import (
     AlertsResponse,
     AuditLogEntry,
+    ContainerBuildCreateRequest,
+    ContainerBuildEligibilityRequest,
+    ContainerBuildEligibilityResult,
+    ContainerBuildLogsResponse,
+    ContainerBuildRecord,
     DeploymentRecord,
     DeploymentReportRecord,
     DeploymentRequest,
     DeploymentResponse,
+    LocalRepositoryAnalysisRequest,
     LogsResponse,
     ProjectCreate,
     ProjectRecord,
+    RepositoryAnalysisRequest,
+    RepositoryAnalysisResult,
+    RepositoryReadinessRequest,
+    RepositoryReadinessResult,
     ServiceMetrics,
+    SourceSnapshotCreateRequest,
+    SourceSnapshotRecord,
+    SourceSnapshotVerification,
     WorkloadHealth,
 )
+from app.services.container_builds import ContainerBuildError
 from app.services.deployments import DeploymentExecutionError
+from app.services.local_repository_analysis import LocalRepositoryAnalysisError
 from app.services.projects import ProjectConflictError, ProjectModeError, ProjectNotFoundError
+from app.services.repository_analysis import RepositoryAnalysisError
+from app.services.repository_readiness import RepositoryReadinessError
+from app.services.source_snapshots import SourceSnapshotError
 
 DEPLOYMENT_COUNTER = Counter("infrawatch_deployments_total", "Deployment actions accepted by ClueStack")
 REQUEST_TIMER = Histogram("infrawatch_api_request_seconds", "ClueStack API route execution time", ["route"])
@@ -140,6 +159,228 @@ def build_router() -> APIRouter:
 
         with REQUEST_TIMER.labels(route="/projects/default-local").time():
             return request.app.state.project_service.get_or_create_default_local_project()
+
+    @router.post(
+        "/projects/{project_id}/source-snapshots",
+        response_model=SourceSnapshotRecord,
+        status_code=status.HTTP_201_CREATED,
+        tags=["source-snapshots"],
+    )
+    async def create_source_snapshot(project_id: str, request: Request) -> SourceSnapshotRecord:
+        """Create an exact, bounded source snapshot without executing repository code."""
+
+        try:
+            payload = await _read_source_snapshot_payload(request)
+            return await request.app.state.source_snapshot_service.create(project_id, payload)
+        except ProjectNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+        except SourceSnapshotError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.get(
+        "/projects/{project_id}/source-snapshots",
+        response_model=list[SourceSnapshotRecord],
+        tags=["source-snapshots"],
+    )
+    async def list_source_snapshots(project_id: str, request: Request) -> list[SourceSnapshotRecord]:
+        try:
+            return request.app.state.source_snapshot_service.list(project_id)
+        except ProjectNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+
+    @router.post(
+        "/projects/{project_id}/source-snapshots/{snapshot_id}/verify",
+        response_model=SourceSnapshotVerification,
+        tags=["source-snapshots"],
+    )
+    async def verify_source_snapshot(project_id: str, snapshot_id: str, request: Request) -> SourceSnapshotVerification:
+        try:
+            return request.app.state.source_snapshot_service.verify(project_id, snapshot_id)
+        except (ProjectNotFoundError, SourceSnapshotError) as exc:
+            code = status.HTTP_404_NOT_FOUND if isinstance(exc, ProjectNotFoundError) else exc.status_code
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+    @router.delete(
+        "/projects/{project_id}/source-snapshots/{snapshot_id}",
+        response_model=SourceSnapshotRecord,
+        tags=["source-snapshots"],
+    )
+    async def delete_source_snapshot(project_id: str, snapshot_id: str, request: Request) -> SourceSnapshotRecord:
+        try:
+            return request.app.state.source_snapshot_service.delete(project_id, snapshot_id)
+        except (ProjectNotFoundError, SourceSnapshotError) as exc:
+            code = status.HTTP_404_NOT_FOUND if isinstance(exc, ProjectNotFoundError) else exc.status_code
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+    @router.get(
+        "/projects/{project_id}/source-snapshots/{snapshot_id}",
+        response_model=SourceSnapshotRecord,
+        tags=["source-snapshots"],
+    )
+    async def get_source_snapshot(project_id: str, snapshot_id: str, request: Request) -> SourceSnapshotRecord:
+        try:
+            return request.app.state.source_snapshot_service.get(project_id, snapshot_id)
+        except (ProjectNotFoundError, SourceSnapshotError) as exc:
+            code = status.HTTP_404_NOT_FOUND if isinstance(exc, ProjectNotFoundError) else exc.status_code
+            raise HTTPException(status_code=code, detail=str(exc)) from exc
+
+    @router.post(
+        "/projects/{project_id}/repository-analysis",
+        response_model=RepositoryAnalysisResult,
+        tags=["projects"],
+    )
+    async def analyze_repository(
+        project_id: str,
+        payload: RepositoryAnalysisRequest,
+        request: Request,
+    ) -> RepositoryAnalysisResult:
+        """Analyze recognized configuration in a public GitHub repository."""
+
+        with REQUEST_TIMER.labels(route="/projects/{project_id}/repository-analysis").time():
+            try:
+                return await request.app.state.repository_analysis_service.analyze(project_id, payload.branch)
+            except ProjectNotFoundError as exc:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+            except ProjectModeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Repository analysis requires a public GitHub repository project",
+                ) from exc
+            except RepositoryAnalysisError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.post(
+        "/projects/{project_id}/repository-readiness",
+        response_model=RepositoryReadinessResult,
+        tags=["projects"],
+    )
+    async def assess_repository_readiness(
+        project_id: str,
+        payload: RepositoryReadinessRequest,
+        request: Request,
+    ) -> RepositoryReadinessResult:
+        """Assess readiness from one persisted public repository analysis."""
+
+        with REQUEST_TIMER.labels(route="/projects/{project_id}/repository-readiness").time():
+            try:
+                return request.app.state.repository_readiness_service.assess(
+                    project_id,
+                    payload.analysis_report_id,
+                )
+            except ProjectNotFoundError as exc:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+            except ProjectModeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Repository readiness requires a supported analyzed repository project",
+                ) from exc
+            except RepositoryReadinessError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.post(
+        "/projects/{project_id}/local-repository-analysis",
+        response_model=RepositoryAnalysisResult,
+        tags=["projects"],
+    )
+    async def analyze_local_repository(project_id: str, request: Request) -> RepositoryAnalysisResult:
+        """Analyze bounded text configuration selected by a browser folder picker."""
+
+        with REQUEST_TIMER.labels(route="/projects/{project_id}/local-repository-analysis").time():
+            payload = await _read_local_analysis_payload(request)
+            try:
+                return request.app.state.local_repository_analysis_service.analyze(project_id, payload)
+            except ProjectNotFoundError as exc:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+            except ProjectModeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Local repository analysis requires a local project",
+                ) from exc
+            except LocalRepositoryAnalysisError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.post(
+        "/projects/{project_id}/container-build-eligibility",
+        response_model=ContainerBuildEligibilityResult,
+        tags=["builds"],
+    )
+    async def container_build_eligibility(
+        project_id: str,
+        payload: ContainerBuildEligibilityRequest,
+        request: Request,
+    ) -> ContainerBuildEligibilityResult:
+        """Validate evidence and isolation prerequisites without executing a build."""
+
+        try:
+            return request.app.state.container_build_service.eligibility(project_id, payload)
+        except ProjectNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+        except ContainerBuildError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.post(
+        "/projects/{project_id}/container-builds",
+        response_model=ContainerBuildRecord,
+        status_code=status.HTTP_201_CREATED,
+        tags=["builds"],
+    )
+    async def create_container_build(
+        project_id: str,
+        payload: ContainerBuildCreateRequest,
+        request: Request,
+    ) -> ContainerBuildRecord:
+        """Create an explicitly approved build attempt through the configured isolated executor."""
+
+        try:
+            return request.app.state.container_build_service.create(project_id, payload)
+        except ProjectNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+        except ContainerBuildError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.get(
+        "/projects/{project_id}/container-builds",
+        response_model=list[ContainerBuildRecord],
+        tags=["builds"],
+    )
+    async def list_container_builds(project_id: str, request: Request) -> list[ContainerBuildRecord]:
+        try:
+            return request.app.state.container_build_service.list_builds(project_id)
+        except ProjectNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found") from exc
+
+    @router.get(
+        "/projects/{project_id}/container-builds/{build_id}/logs",
+        response_model=ContainerBuildLogsResponse,
+        tags=["builds"],
+    )
+    async def container_build_logs(project_id: str, build_id: str, request: Request) -> ContainerBuildLogsResponse:
+        result = request.app.state.container_build_service.logs(project_id, build_id)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Container build not found")
+        return result
+
+    @router.post(
+        "/projects/{project_id}/container-builds/{build_id}/cancel",
+        response_model=ContainerBuildRecord,
+        tags=["builds"],
+    )
+    async def cancel_container_build(project_id: str, build_id: str, request: Request) -> ContainerBuildRecord:
+        try:
+            return request.app.state.container_build_service.cancel(project_id, build_id)
+        except ContainerBuildError as exc:
+            raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    @router.get(
+        "/projects/{project_id}/container-builds/{build_id}",
+        response_model=ContainerBuildRecord,
+        tags=["builds"],
+    )
+    async def get_container_build(project_id: str, build_id: str, request: Request) -> ContainerBuildRecord:
+        result = request.app.state.container_build_service.get(project_id, build_id)
+        if result is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Container build not found")
+        return result
 
     @router.get("/projects/{project_id}", response_model=ProjectRecord, tags=["projects"])
     async def get_project(project_id: str, request: Request) -> ProjectRecord:
@@ -265,3 +506,59 @@ def build_router() -> APIRouter:
             return rolled_back
 
     return router
+
+
+async def _read_local_analysis_payload(request: Request) -> LocalRepositoryAnalysisRequest:
+    """Read JSON incrementally so oversized local submissions are rejected early."""
+
+    limit = request.app.state.settings.local_analysis_max_request_bytes
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > limit:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="Request body is too large",
+                )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Content-Length header",
+            ) from exc
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > limit:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="Request body is too large",
+            )
+    try:
+        return LocalRepositoryAnalysisRequest.model_validate_json(bytes(body))
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid local analysis payload",
+        ) from exc
+
+
+async def _read_source_snapshot_payload(request: Request) -> SourceSnapshotCreateRequest:
+    """Bound JSON buffering before validating a potentially multi-file local submission."""
+
+    limit = request.app.state.settings.source_snapshot_max_request_bytes
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > limit:
+                raise HTTPException(status_code=413, detail="Snapshot request body is too large")
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid Content-Length header") from exc
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > limit:
+            raise HTTPException(status_code=413, detail="Snapshot request body is too large")
+    try:
+        return SourceSnapshotCreateRequest.model_validate_json(bytes(body))
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="Invalid source snapshot payload") from exc

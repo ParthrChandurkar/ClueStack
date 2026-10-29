@@ -25,10 +25,26 @@ from app.repository import (
     build_report_repository,
 )
 from app.schemas import DeploymentRequest
+from app.services.build_workers import (
+    BoundedWorkerLogCollector,
+    BuildWorkerProvider,
+    UnavailableIsolationRuntime,
+    WorkerLifecycleManager,
+)
+from app.services.container_builds import ContainerBuildService, WorkerBuildExecutor
 from app.services.deployments import DeploymentService
+from app.services.local_repository_analysis import LocalRepositoryAnalysisService
 from app.services.observability import AlertmanagerClient, LokiClient, PrometheusClient
 from app.services.projects import ProjectService
 from app.services.reports import ReportService
+from app.services.repository_analysis import GitHubRepositoryClient, RepositoryAnalysisService
+from app.services.repository_readiness import RepositoryReadinessService
+from app.services.source_snapshots import (
+    FileSnapshotMetadataRepository,
+    GitHubSnapshotAcquirer,
+    SnapshotBuildSourceProvider,
+    SourceSnapshotService,
+)
 
 HTTP_REQUEST_COUNTER = Counter(
     "http_requests_total",
@@ -68,6 +84,50 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = active_settings
     app.state.project_service = project_service
     app.state.report_service = report_service
+    repository_analysis_service = RepositoryAnalysisService(
+        project_service,
+        report_service,
+        GitHubRepositoryClient(active_settings),
+    )
+    app.state.repository_analysis_service = repository_analysis_service
+    app.state.local_repository_analysis_service = LocalRepositoryAnalysisService(
+        active_settings,
+        project_service,
+        report_service,
+        repository_analysis_service,
+    )
+    app.state.repository_readiness_service = RepositoryReadinessService(
+        active_settings,
+        project_service,
+        report_service,
+    )
+    snapshot_service = SourceSnapshotService(
+        active_settings,
+        project_service,
+        report_service,
+        FileSnapshotMetadataRepository(active_settings.source_snapshots_file),
+        GitHubSnapshotAcquirer(active_settings),
+    )
+    app.state.source_snapshot_service = snapshot_service
+    worker_provider = BuildWorkerProvider(
+        snapshot_service,
+        UnavailableIsolationRuntime(
+            "No verified isolation runtime is available; Docker Desktop alone is not an approved security boundary."
+        ),
+        WorkerLifecycleManager(
+            active_settings.container_build_max_concurrent_jobs,
+            active_settings.container_build_max_queued_jobs,
+        ),
+        BoundedWorkerLogCollector(active_settings.container_build_max_log_bytes),
+    )
+    app.state.build_worker_provider = worker_provider
+    app.state.container_build_service = ContainerBuildService(
+        active_settings,
+        project_service,
+        report_service,
+        SnapshotBuildSourceProvider(snapshot_service),
+        WorkerBuildExecutor(worker_provider),
+    )
     app.state.deployment_service = DeploymentService(
         active_settings,
         repository,

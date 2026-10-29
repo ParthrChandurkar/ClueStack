@@ -21,7 +21,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -33,10 +33,17 @@ import {
 } from "recharts";
 import {
   apiMode,
+  analyzeLocalRepository,
+  analyzeRepository,
+  assessRepositoryReadiness,
+  createContainerBuild,
+  createSourceSnapshot,
   createProject,
   deleteDeployment,
+  deleteSourceSnapshot,
   deployService,
   getDefaultLocalProject,
+  getContainerBuildLogs,
   getAlerts,
   getLogs,
   getMetrics,
@@ -46,23 +53,41 @@ import {
   listProjectDeployments,
   listProjectReports,
   listProjects,
+  listSourceSnapshots,
   resetSandbox,
   rollbackDeployment,
   subscribeToApiFallback,
+  validateContainerBuild,
+  verifySourceSnapshot,
 } from "./api";
 import type {
   AuditLogEntry,
   AlertSummary,
   AlertsResponse,
+  ContainerBuildEligibilityPayload,
+  ContainerBuildEligibilityResult,
+  ContainerBuildRecord,
   DeploymentRecord,
   DeploymentReportRecord,
   DeploymentStatus,
   LogsResponse,
+  LocalRepositoryAnalysisFile,
   ProjectRecord,
+  RepositoryAnalysisResult,
+  RepositoryReadinessResult,
   ServiceMetrics,
+  SourceSnapshotRecord,
   WorkloadHealth,
 } from "./types";
 import clueStackMark from "./assets/cluestack-mark.svg";
+import {
+  isCurrentRepositoryRequest,
+  repositoryAnalysisViewState,
+  repositoryReadinessViewState,
+  repositoryRemoteAnalysisAllowed,
+} from "./repositoryAnalysisState";
+import { summarizeLocalSelection, summarizeLocalSnapshotSelection } from "./localRepositorySelection";
+import { snapshotBuildCandidate } from "./sourceSnapshotState";
 
 const STATUS_THEME: Record<DeploymentStatus, { color: string; label: string; icon: ReactNode }> = {
   Running: { color: "#3ddc97", label: "Healthy", icon: <CheckCircle2 size={14} /> },
@@ -85,7 +110,7 @@ const EMPTY_METRICS: ServiceMetrics = {
 
 const EMPTY_LOGS: LogsResponse = { service: "", lines: [], source: "empty" };
 const EMPTY_ALERTS: AlertsResponse = { source: "empty", alerts: [] };
-const REPOSITORY_URL = "https://github.com/ParthrChandurkar/InfraWatch";
+const REPOSITORY_URL = "https://github.com/ParthrChandurkar/ClueStack";
 const LOCAL_TOOLS = [
   { label: "Grafana", href: "http://localhost:3001", icon: <BarChart3 size={16} /> },
   { label: "Prometheus", href: "http://localhost:9090", icon: <Activity size={16} /> },
@@ -126,6 +151,12 @@ function App() {
   const projectDataRequest = useRef(0);
   const selectedProjectIdRef = useRef("");
   const selectedDeploymentNameRef = useRef("");
+  const selectedRepositoryProjectIdRef = useRef("");
+  const repositoryAnalysisRequest = useRef(0);
+  const localRepositoryAnalysisRequest = useRef(0);
+  const containerBuildRequest = useRef(0);
+  const sourceSnapshotRequest = useRef(0);
+  const localFolderInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     name: "catalog-api",
     image: "docker.io/example/catalog-api:latest",
@@ -133,12 +164,69 @@ function App() {
     port: 8080,
   });
   const [projectForm, setProjectForm] = useState({ name: "", slug: "" });
+  const [selectedRepositoryProjectId, setSelectedRepositoryProjectId] = useState("");
+  const [repositoryBranch, setRepositoryBranch] = useState("");
+  const [repositoryAnalysis, setRepositoryAnalysis] = useState<RepositoryAnalysisResult | null>(null);
+  const [repositoryAnalysisError, setRepositoryAnalysisError] = useState("");
+  const [isAnalyzingRepository, setIsAnalyzingRepository] = useState(false);
+  const [repositoryReadiness, setRepositoryReadiness] = useState<RepositoryReadinessResult | null>(null);
+  const [repositoryReadinessError, setRepositoryReadinessError] = useState("");
+  const [isAssessingReadiness, setIsAssessingReadiness] = useState(false);
+  const [localRepositoryFiles, setLocalRepositoryFiles] = useState<File[]>([]);
+  const [localSnapshotFiles, setLocalSnapshotFiles] = useState<File[]>([]);
+  const [localSnapshotSelectionError, setLocalSnapshotSelectionError] = useState("");
+  const [localFolderLabel, setLocalFolderLabel] = useState("");
+  const [localSelectionSummary, setLocalSelectionSummary] = useState("");
+  const [localRepositoryAnalysis, setLocalRepositoryAnalysis] = useState<RepositoryAnalysisResult | null>(null);
+  const [localRepositoryAnalysisError, setLocalRepositoryAnalysisError] = useState("");
+  const [isAnalyzingLocalRepository, setIsAnalyzingLocalRepository] = useState(false);
+  const [localAnalysisProgress, setLocalAnalysisProgress] = useState(0);
+  const [localRepositoryReadiness, setLocalRepositoryReadiness] = useState<RepositoryReadinessResult | null>(null);
+  const [localRepositoryReadinessError, setLocalRepositoryReadinessError] = useState("");
+  const [isAssessingLocalReadiness, setIsAssessingLocalReadiness] = useState(false);
+  const [buildProjectId, setBuildProjectId] = useState("");
+  const [buildReports, setBuildReports] = useState<DeploymentReportRecord[]>([]);
+  const [buildEligibility, setBuildEligibility] = useState<ContainerBuildEligibilityResult | null>(null);
+  const [containerBuild, setContainerBuild] = useState<ContainerBuildRecord | null>(null);
+  const [containerBuildLogs, setContainerBuildLogs] = useState("");
+  const [containerBuildError, setContainerBuildError] = useState("");
+  const [isValidatingBuild, setIsValidatingBuild] = useState(false);
+  const [isBuildingContainer, setIsBuildingContainer] = useState(false);
+  const [buildApproved, setBuildApproved] = useState(false);
+  const [buildForm, setBuildForm] = useState({ imageName: "example/cluestack-app", imageTag: "local", dockerfilePath: "Dockerfile" });
+  const [sourceSnapshots, setSourceSnapshots] = useState<SourceSnapshotRecord[]>([]);
+  const [sourceSnapshotError, setSourceSnapshotError] = useState("");
+  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
 
   const localProjects = projects.filter((project) => project.mode === "local" && !project.archived_at);
-  const repositoryProjectCount = projects.filter((project) => project.mode === "github_repository").length;
+  const repositoryProjects = projects.filter((project) => project.mode === "github_repository" && !project.archived_at);
+  const selectedRepositoryProject = repositoryProjects.find(
+    (project) => project.id === selectedRepositoryProjectId,
+  ) ?? repositoryProjects[0] ?? null;
   const selectedProject = localProjects.find((project) => project.id === selectedProjectId) ?? null;
   const selectedDeployment = deployments.find((item) => item.name === selected) ?? deployments[0] ?? null;
   const isBrowserFallback = isDemoMode || usingApiFallback;
+  const analysisViewState = repositoryAnalysisViewState(
+    isAnalyzingRepository,
+    repositoryAnalysis,
+    repositoryAnalysisError,
+  );
+  const readinessViewState = repositoryReadinessViewState(
+    isAssessingReadiness,
+    repositoryReadiness,
+    repositoryReadinessError,
+  );
+  const localAnalysisViewState = repositoryAnalysisViewState(
+    isAnalyzingLocalRepository,
+    localRepositoryAnalysis,
+    localRepositoryAnalysisError,
+  );
+  const localReadinessViewState = repositoryReadinessViewState(
+    isAssessingLocalReadiness,
+    localRepositoryReadiness,
+    localRepositoryReadinessError,
+  );
+  const remoteAnalysisAllowed = repositoryRemoteAnalysisAllowed(isDemoMode);
 
   useEffect(() => subscribeToApiFallback(setUsingApiFallback), []);
 
@@ -161,9 +249,37 @@ function App() {
       selectedDeploymentNameRef.current = "";
       observabilitySelection.current += 1;
       observabilityRequest.current += 1;
+      localRepositoryAnalysisRequest.current += 1;
       setSelected("");
+      setLocalRepositoryAnalysis(null);
+      setLocalRepositoryAnalysisError("");
+      setIsAnalyzingLocalRepository(false);
+      setLocalRepositoryReadiness(null);
+      setLocalRepositoryReadinessError("");
+      setIsAssessingLocalReadiness(false);
+      setLocalRepositoryFiles([]);
+      setLocalFolderLabel("");
+      setLocalSelectionSummary("");
+      setLocalAnalysisProgress(0);
+      if (localFolderInputRef.current) {
+        localFolderInputRef.current.value = "";
+      }
     }
     setSelectedProjectId(projectId);
+  }, []);
+
+  const selectRepositoryProject = useCallback((projectId: string) => {
+    if (selectedRepositoryProjectIdRef.current !== projectId) {
+      selectedRepositoryProjectIdRef.current = projectId;
+      repositoryAnalysisRequest.current += 1;
+      setRepositoryAnalysis(null);
+      setRepositoryAnalysisError("");
+      setIsAnalyzingRepository(false);
+      setRepositoryReadiness(null);
+      setRepositoryReadinessError("");
+      setIsAssessingReadiness(false);
+    }
+    setSelectedRepositoryProjectId(projectId);
   }, []);
 
   const summary = useMemo(() => {
@@ -202,10 +318,17 @@ function App() {
       ?? selectable.find((project) => project.id === defaultProject.id)
       ?? defaultProject;
     setProjects(items.some((project) => project.id === defaultProject.id) ? items : [defaultProject, ...items]);
+    const repositoryItems = items.filter((project) => project.mode === "github_repository" && !project.archived_at);
+    const currentRepositoryProjectId = selectedRepositoryProjectIdRef.current;
+    selectRepositoryProject(
+      repositoryItems.some((project) => project.id === currentRepositoryProjectId)
+        ? currentRepositoryProjectId
+        : repositoryItems[0]?.id ?? "",
+    );
     selectProject(nextProject.id);
     setProjectError("");
     return nextProject;
-  }, [selectProject]);
+  }, [selectProject, selectRepositoryProject]);
 
   const refreshDeployments = useCallback(async (projectId: string, requestId: number) => {
     const items = await listProjectDeployments(projectId);
@@ -488,6 +611,357 @@ function App() {
     }
   }
 
+  function handleLocalFolderSelection(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? []);
+    const candidates = files.map((file) => ({ path: file.webkitRelativePath || file.name, size: file.size }));
+    const summary = summarizeLocalSelection(candidates);
+    const snapshotSummary = summarizeLocalSnapshotSelection(candidates);
+    const acceptedPaths = new Set(summary.accepted.map((item) => item.path));
+    const snapshotPaths = new Set(snapshotSummary.accepted.map((item) => item.path));
+    const rootLabel = (candidates[0]?.path.split("/")[0] || "Selected local folder").slice(0, 80);
+    localRepositoryAnalysisRequest.current += 1;
+    setIsAnalyzingLocalRepository(false);
+    setIsAssessingLocalReadiness(false);
+    setLocalAnalysisProgress(0);
+    setLocalFolderLabel(rootLabel);
+    setLocalRepositoryFiles(files.filter((file) => acceptedPaths.has(file.webkitRelativePath || file.name)));
+    setLocalSnapshotFiles(files.filter((file) => snapshotPaths.has(file.webkitRelativePath || file.name)));
+    setLocalSnapshotSelectionError(snapshotSummary.error);
+    setLocalSelectionSummary(
+      summary.error
+        || `${summary.accepted.length} recognized file(s), ${summary.totalBytes.toLocaleString()} bytes; ${summary.ignoredCount} unsupported or excluded file(s).`,
+    );
+    setLocalRepositoryAnalysis(null);
+    setLocalRepositoryAnalysisError(summary.error);
+    setLocalRepositoryReadiness(null);
+    setLocalRepositoryReadinessError("");
+  }
+
+  async function handleLocalRepositoryAnalysis(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedProject) {
+      setLocalRepositoryAnalysisError("Select an existing local project first.");
+      return;
+    }
+    if (!localFolderLabel || localRepositoryAnalysisError) {
+      setLocalRepositoryAnalysisError(localRepositoryAnalysisError || "Select a local project folder first.");
+      return;
+    }
+    setIsAnalyzingLocalRepository(true);
+    setLocalAnalysisProgress(0);
+    setLocalRepositoryAnalysis(null);
+    setLocalRepositoryAnalysisError("");
+    setLocalRepositoryReadiness(null);
+    setLocalRepositoryReadinessError("");
+    const requestId = ++localRepositoryAnalysisRequest.current;
+    const projectId = selectedProject.id;
+    try {
+      const files: LocalRepositoryAnalysisFile[] = [];
+      for (const file of localRepositoryFiles) {
+        files.push({
+          path: repositoryRelativePath(file.webkitRelativePath || file.name),
+          content: await file.text(),
+        });
+        if (isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+          setLocalAnalysisProgress(files.length);
+        }
+      }
+      if (!isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        return;
+      }
+      const result = await analyzeLocalRepository(projectId, {
+        source_label: localFolderLabel,
+        submission_complete: true,
+        files,
+      });
+      if (!isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        return;
+      }
+      setLocalRepositoryAnalysis(result);
+      void refreshProjectData(projectId).catch((reason) => {
+        if (selectedProjectIdRef.current === projectId) {
+          setReportError(reason instanceof Error ? reason.message : "Report history refresh failed");
+        }
+      });
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        setLocalRepositoryAnalysisError(reason instanceof Error ? reason.message : "Local repository analysis failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        setIsAnalyzingLocalRepository(false);
+      }
+    }
+  }
+
+  async function handleLocalReadinessAssessment() {
+    if (!selectedProject) {
+      setLocalRepositoryReadinessError("Select an existing local project first.");
+      return;
+    }
+    setIsAssessingLocalReadiness(true);
+    setLocalRepositoryReadiness(null);
+    setLocalRepositoryReadinessError("");
+    const requestId = ++localRepositoryAnalysisRequest.current;
+    const projectId = selectedProject.id;
+    try {
+      const result = await assessRepositoryReadiness(projectId, localRepositoryAnalysis?.report_id);
+      if (isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        setLocalRepositoryReadiness(result);
+      }
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        setLocalRepositoryReadinessError(reason instanceof Error ? reason.message : "Readiness assessment failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, localRepositoryAnalysisRequest.current)) {
+        setIsAssessingLocalReadiness(false);
+      }
+    }
+  }
+
+  async function loadBuildEvidence(projectId: string) {
+    const requestId = ++containerBuildRequest.current;
+    const snapshotRequestId = ++sourceSnapshotRequest.current;
+    setBuildProjectId(projectId);
+    setBuildEligibility(null);
+    setContainerBuild(null);
+    setContainerBuildLogs("");
+    setContainerBuildError("");
+    setBuildApproved(false);
+    setSourceSnapshots([]);
+    setSourceSnapshotError("");
+    try {
+      const [items, snapshots] = await Promise.all([
+        listProjectReports(projectId),
+        isDemoMode ? Promise.resolve([]) : listSourceSnapshots(projectId),
+      ]);
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setBuildReports(items);
+      }
+      if (isCurrentRepositoryRequest(snapshotRequestId, sourceSnapshotRequest.current)) {
+        setSourceSnapshots(snapshots);
+      }
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setContainerBuildError(reason instanceof Error ? reason.message : "Build evidence could not be loaded");
+      }
+    }
+  }
+
+  async function handleCreateSourceSnapshot() {
+    const project = projects.find((item) => item.id === buildProjectId);
+    const analysis = buildReports.find((report) => report.operation === "repository_analysis" && ["success", "partial"].includes(report.status));
+    if (!project || !analysis) {
+      setSourceSnapshotError("Select a project with repository analysis evidence first.");
+      return;
+    }
+    if (project.mode === "local" && (localSnapshotSelectionError || localSnapshotFiles.length === 0)) {
+      setSourceSnapshotError(localSnapshotSelectionError || "Choose the local project folder before creating a snapshot.");
+      return;
+    }
+    const requestId = ++sourceSnapshotRequest.current;
+    setIsCreatingSnapshot(true);
+    setSourceSnapshotError("");
+    try {
+      const files: LocalRepositoryAnalysisFile[] = [];
+      if (project.mode === "local") {
+        for (const file of localSnapshotFiles) {
+          files.push({
+            path: repositoryRelativePath(file.webkitRelativePath || file.name),
+            content: await file.text(),
+          });
+          if (!isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) return;
+        }
+      }
+      await createSourceSnapshot(project.id, {
+        reference: project.mode === "github_repository" ? repositoryBranch.trim() || null : null,
+        analysis_report_id: analysis.id,
+        source_label: project.mode === "local" ? localFolderLabel : null,
+        submission_complete: false,
+        files,
+      });
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) {
+        setSourceSnapshots(await listSourceSnapshots(project.id));
+        setBuildEligibility(null);
+      }
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) {
+        setSourceSnapshotError(reason instanceof Error ? reason.message : "Source snapshot creation failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) setIsCreatingSnapshot(false);
+    }
+  }
+
+  async function handleVerifySourceSnapshot(snapshotId: string) {
+    const requestId = ++sourceSnapshotRequest.current;
+    setSourceSnapshotError("");
+    try {
+      await verifySourceSnapshot(buildProjectId, snapshotId);
+      const snapshots = await listSourceSnapshots(buildProjectId);
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) setSourceSnapshots(snapshots);
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) {
+        setSourceSnapshotError(reason instanceof Error ? reason.message : "Snapshot verification failed");
+      }
+    }
+  }
+
+  async function handleDeleteSourceSnapshot(snapshotId: string) {
+    if (!window.confirm("Delete this source snapshot? Published source bytes will be removed.")) return;
+    const requestId = ++sourceSnapshotRequest.current;
+    setSourceSnapshotError("");
+    try {
+      await deleteSourceSnapshot(buildProjectId, snapshotId);
+      const snapshots = await listSourceSnapshots(buildProjectId);
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) {
+        setSourceSnapshots(snapshots);
+        setBuildEligibility(null);
+      }
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, sourceSnapshotRequest.current)) {
+        setSourceSnapshotError(reason instanceof Error ? reason.message : "Snapshot deletion failed");
+      }
+    }
+  }
+
+  function currentBuildPayload(): ContainerBuildEligibilityPayload | null {
+    const analysis = buildReports.find((report) => report.operation === "repository_analysis" && ["success", "partial"].includes(report.status));
+    const readiness = buildReports.find((report) => report.operation === "repository_readiness" && report.status === "success");
+    const snapshot = snapshotBuildCandidate(sourceSnapshots, analysis?.id);
+    if (!analysis || !readiness || !snapshot) {
+      return null;
+    }
+    return {
+      analysis_report_id: analysis.id,
+      readiness_report_id: readiness.id,
+      source_snapshot_id: snapshot.id,
+      dockerfile_path: buildForm.dockerfilePath,
+      context_path: ".",
+      image_name: buildForm.imageName,
+      image_tag: buildForm.imageTag,
+    };
+  }
+
+  async function handleBuildValidation() {
+    const payload = currentBuildPayload();
+    if (!buildProjectId || !payload) {
+      setContainerBuildError("Run repository analysis and readiness assessment for the selected project first.");
+      return;
+    }
+    const requestId = ++containerBuildRequest.current;
+    setIsValidatingBuild(true);
+    setBuildEligibility(null);
+    setContainerBuildError("");
+    try {
+      const result = await validateContainerBuild(buildProjectId, payload);
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setBuildEligibility(result);
+      }
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setContainerBuildError(reason instanceof Error ? reason.message : "Build validation failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setIsValidatingBuild(false);
+      }
+    }
+  }
+
+  async function handleContainerBuild() {
+    const payload = currentBuildPayload();
+    if (!buildProjectId || !payload || !buildApproved) {
+      setContainerBuildError("Validate the build and provide explicit approval before submitting it.");
+      return;
+    }
+    const requestId = ++containerBuildRequest.current;
+    setIsBuildingContainer(true);
+    setContainerBuild(null);
+    setContainerBuildLogs("");
+    setContainerBuildError("");
+    try {
+      const result = await createContainerBuild(buildProjectId, { ...payload, approved: true });
+      if (!isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        return;
+      }
+      setContainerBuild(result);
+      const logs = await getContainerBuildLogs(buildProjectId, result.id);
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setContainerBuildLogs(logs.logs);
+      }
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setContainerBuildError(reason instanceof Error ? reason.message : "Container build failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, containerBuildRequest.current)) {
+        setIsBuildingContainer(false);
+      }
+    }
+  }
+
+  async function handleRepositoryAnalysis(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedRepositoryProject) {
+      setRepositoryAnalysisError("Select an existing public GitHub repository project first.");
+      return;
+    }
+    setIsAnalyzingRepository(true);
+    setRepositoryAnalysis(null);
+    setRepositoryAnalysisError("");
+    setRepositoryReadiness(null);
+    setRepositoryReadinessError("");
+    setIsAssessingReadiness(false);
+    const requestId = ++repositoryAnalysisRequest.current;
+    try {
+      const result = await analyzeRepository(selectedRepositoryProject.id, repositoryBranch);
+      if (!isCurrentRepositoryRequest(requestId, repositoryAnalysisRequest.current)) {
+        return;
+      }
+      setRepositoryAnalysis(result);
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, repositoryAnalysisRequest.current)) {
+        setRepositoryAnalysisError(reason instanceof Error ? reason.message : "Repository analysis failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, repositoryAnalysisRequest.current)) {
+        setIsAnalyzingRepository(false);
+      }
+    }
+  }
+
+  async function handleReadinessAssessment() {
+    if (!selectedRepositoryProject) {
+      setRepositoryReadinessError("Select an existing public GitHub repository project first.");
+      return;
+    }
+    setIsAssessingReadiness(true);
+    setIsAnalyzingRepository(false);
+    setRepositoryReadiness(null);
+    setRepositoryReadinessError("");
+    const requestId = ++repositoryAnalysisRequest.current;
+    try {
+      const result = await assessRepositoryReadiness(
+        selectedRepositoryProject.id,
+        repositoryAnalysis?.report_id,
+      );
+      if (!isCurrentRepositoryRequest(requestId, repositoryAnalysisRequest.current)) {
+        return;
+      }
+      setRepositoryReadiness(result);
+    } catch (reason) {
+      if (isCurrentRepositoryRequest(requestId, repositoryAnalysisRequest.current)) {
+        setRepositoryReadinessError(reason instanceof Error ? reason.message : "Readiness assessment failed");
+      }
+    } finally {
+      if (isCurrentRepositoryRequest(requestId, repositoryAnalysisRequest.current)) {
+        setIsAssessingReadiness(false);
+      }
+    }
+  }
+
   async function handleDelete(name: string) {
     if (!window.confirm(`Remove ${name} from ${isBrowserFallback ? "your browser sandbox" : "ClueStack"}?`)) {
       return;
@@ -750,6 +1224,7 @@ function App() {
 
         <nav className="sidebar-nav" aria-label="Dashboard sections">
           <a href="#projects">Projects</a>
+          <a href="#repository-analysis">Repository Analysis</a>
           <a href="#overview">Overview</a>
           <a href="#deploy">Deploy</a>
           <a href="#workloads">Workloads</a>
@@ -847,7 +1322,7 @@ function App() {
             <div>
               <span className="section-kicker">Project Workspace</span>
               <h2>Track local deployments by project</h2>
-              <p>Select a local project to scope its deployments and report history. Repository Mode remains metadata-only.</p>
+              <p>Select a local project to scope its deployments and report history.</p>
             </div>
             <span className="data-source">{isBrowserFallback ? "Browser-local demo data" : "ClueStack persistence"}</span>
           </div>
@@ -878,9 +1353,9 @@ function App() {
                 <span>{selectedProject ? `${selectedProject.slug} · ${selectedProject.default_namespace}` : "Project data has not loaded."}</span>
                 <code>{selectedProject ? shortIdentifier(selectedProject.id) : "—"}</code>
               </div>
-              {repositoryProjectCount > 0 && (
+              {repositoryProjects.length > 0 && (
                 <p className="project-boundary-note">
-                  {repositoryProjectCount} repository-mode project{repositoryProjectCount === 1 ? " is" : "s are"} stored as metadata only and cannot be deployed from this screen.
+                  {repositoryProjects.length} repository-mode project{repositoryProjects.length === 1 ? " is" : "s are"} available for read-only source analysis below. Analysis never executes repository code.
                 </p>
               )}
             </div>
@@ -919,6 +1394,396 @@ function App() {
             </form>
           </div>
           {projectError && <div className="inline-error">Project data unavailable: {projectError}</div>}
+        </section>
+
+        <section className="panel repository-analysis-panel" id="local-repository-analysis" aria-label="Local repository analysis">
+          <div className="panel-heading">
+            <div>
+              <span className="section-kicker">Local Project Analysis</span>
+              <h2>Inspect a local project folder</h2>
+              <p>Your browser submits only bounded, recognized text configuration. ClueStack does not receive an absolute path, archive, source tree, or credential files.</p>
+            </div>
+            <span className="data-source">{isDemoMode ? "Unavailable in Demo Mode" : "Browser-selected files"}</span>
+          </div>
+          <form className="repository-analysis-form local-analysis-form" onSubmit={handleLocalRepositoryAnalysis}>
+            <label>
+              Local project
+              <select aria-label="Local analysis project" value={selectedProject?.id ?? ""} onChange={(event) => selectProject(event.target.value)}>
+                {localProjects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}
+              </select>
+            </label>
+            <label>
+              Project folder
+              <input
+                aria-label="Local project folder"
+                type="file"
+                multiple
+                ref={(node) => {
+                  localFolderInputRef.current = node;
+                  if (node) {
+                    node.setAttribute("webkitdirectory", "");
+                    node.setAttribute("directory", "");
+                  }
+                }}
+                disabled={isDemoMode || isAnalyzingLocalRepository}
+                onChange={handleLocalFolderSelection}
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={isDemoMode || !selectedProject || !localFolderLabel || Boolean(localRepositoryAnalysisError) || isAnalyzingLocalRepository || isAssessingLocalReadiness}
+            >
+              <HardDrive size={17} />
+              {isAnalyzingLocalRepository ? "Analyzing…" : "Analyze selected folder"}
+            </button>
+          </form>
+          {localFolderLabel && (
+            <div className="repository-identity">
+              <div>
+                <strong>{localFolderLabel}</strong>
+                <span>{localSelectionSummary}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleLocalReadinessAssessment}
+                disabled={isDemoMode || isAssessingLocalReadiness || isAnalyzingLocalRepository || !localRepositoryAnalysis}
+              >
+                <ShieldCheck size={16} />
+                {isAssessingLocalReadiness ? "Assessing…" : "Assess readiness"}
+              </button>
+            </div>
+          )}
+          {localRepositoryAnalysisError && <div className="inline-error">Analysis failed: {localRepositoryAnalysisError}</div>}
+          {localAnalysisViewState === "loading" && (
+            <div className="empty-analysis" role="status">
+              Reading recognized local configuration… {localAnalysisProgress}/{localRepositoryFiles.length} files
+            </div>
+          )}
+          {localAnalysisViewState === "success" && localRepositoryAnalysis && <AnalysisResultDetails result={localRepositoryAnalysis} />}
+          {localRepositoryReadinessError && <div className="inline-error">Readiness assessment failed: {localRepositoryReadinessError}</div>}
+          {localReadinessViewState === "loading" && <div className="empty-analysis" role="status">Assessing persisted local evidence…</div>}
+          {localReadinessViewState === "success" && localRepositoryReadiness && <ReadinessResultDetails result={localRepositoryReadiness} />}
+          {!localFolderLabel && !localRepositoryAnalysisError && (
+            <div className="empty-analysis">Select a folder to inspect recognized configuration. No project code is executed.</div>
+          )}
+        </section>
+
+        <section className="panel repository-analysis-panel" id="repository-analysis" aria-label="Public GitHub repository analysis">
+          <div className="panel-heading">
+            <div>
+              <span className="section-kicker">Repository Mode</span>
+              <h2>Analyze public GitHub configuration</h2>
+              <p>ClueStack reads bounded configuration evidence through the public GitHub API. It does not clone, build, or execute repository code.</p>
+            </div>
+            <span className="data-source">{isDemoMode ? "Unavailable in Demo Mode" : "GitHub public API"}</span>
+          </div>
+          <form className="repository-analysis-form" onSubmit={handleRepositoryAnalysis}>
+            <label>
+              Repository project
+              <select
+                aria-label="Repository project"
+                value={selectedRepositoryProject?.id ?? ""}
+                disabled={!repositoryProjects.length || isAnalyzingRepository}
+                onChange={(event) => {
+                  selectRepositoryProject(event.target.value);
+                }}
+              >
+                {repositoryProjects.map((project) => (
+                  <option value={project.id} key={project.id}>{project.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Branch <span>(default branch when blank)</span>
+              <input
+                aria-label="Repository branch"
+                maxLength={255}
+                value={repositoryBranch}
+                onChange={(event) => setRepositoryBranch(event.target.value)}
+                placeholder="main"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={!selectedRepositoryProject || isAnalyzingRepository || isAssessingReadiness || !remoteAnalysisAllowed}
+            >
+              <GitBranch size={17} />
+              {isAnalyzingRepository ? "Analyzing…" : "Analyze repository"}
+            </button>
+          </form>
+          {!repositoryProjects.length && (
+            <div className="empty-analysis">No public GitHub repository project exists yet. Create one through the project API before analyzing it.</div>
+          )}
+          {selectedRepositoryProject && (
+            <div className="repository-identity">
+              <div>
+                <strong>{selectedRepositoryProject.name}</strong>
+                <a href={selectedRepositoryProject.repository_url ?? "#"} target="_blank" rel="noreferrer">
+                  {selectedRepositoryProject.repository_url}
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+              <button
+                type="button"
+                onClick={handleReadinessAssessment}
+                disabled={isAssessingReadiness || isAnalyzingRepository || !remoteAnalysisAllowed}
+              >
+                <ShieldCheck size={16} />
+                {isAssessingReadiness ? "Assessing…" : "Assess readiness"}
+              </button>
+            </div>
+          )}
+          {repositoryAnalysisError && <div className="inline-error">Analysis failed: {repositoryAnalysisError}</div>}
+          {analysisViewState === "loading" && (
+            <div className="empty-analysis" role="status">Retrieving bounded repository evidence from GitHub…</div>
+          )}
+          {repositoryAnalysis && (
+            <div className="analysis-results" aria-live="polite">
+              <div className="analysis-summary">
+                <span className={`analysis-status ${repositoryAnalysis.retrieval_status}`}>{repositoryAnalysis.retrieval_status}</span>
+                <strong>{repositoryAnalysis.source_label}</strong>
+                {repositoryAnalysis.branch && repositoryAnalysis.commit_sha && (
+                  <span>{repositoryAnalysis.branch} · <code>{repositoryAnalysis.commit_sha.slice(0, 12)}</code></span>
+                )}
+                <span>{repositoryAnalysis.files_retrieved} files · {repositoryAnalysis.content_bytes_retrieved.toLocaleString()} bytes</span>
+              </div>
+              <div className="analysis-findings">
+                {repositoryAnalysis.findings.map((finding) => (
+                  <article className="analysis-finding" key={finding.category}>
+                    <div>
+                      <strong>{formatOperation(finding.category)}</strong>
+                      <span className={`finding-status ${finding.status}`}>{finding.status}</span>
+                    </div>
+                    <p>{finding.values.length ? finding.values.join(", ") : finding.detail}</p>
+                    {finding.evidence_paths.length > 0 && (
+                      <ul>
+                        {finding.evidence_paths.map((path) => <li key={path}><code>{path}</code></li>)}
+                      </ul>
+                    )}
+                  </article>
+                ))}
+              </div>
+              {repositoryAnalysis.missing_prerequisites.length > 0 && (
+                <div className="analysis-notes">
+                  <strong>Missing prerequisites</strong>
+                  <ul>{repositoryAnalysis.missing_prerequisites.map((item) => <li key={item}>{item}</li>)}</ul>
+                </div>
+              )}
+              {repositoryAnalysis.warnings.length > 0 && (
+                <div className="analysis-notes warning">
+                  <strong>Incomplete or limited evidence</strong>
+                  <ul>{repositoryAnalysis.warnings.map((item) => <li key={item}>{item}</li>)}</ul>
+                </div>
+              )}
+              <small>Analysis report: <code>{shortIdentifier(repositoryAnalysis.report_id)}</code> · {relativeTime(repositoryAnalysis.analyzed_at)}</small>
+            </div>
+          )}
+          {readinessViewState === "loading" && (
+            <div className="empty-analysis" role="status">Assessing persisted repository evidence…</div>
+          )}
+          {readinessViewState === "idle" && selectedRepositoryProject && (
+            <div className="empty-analysis">
+              Readiness has not been assessed for this project. Run repository analysis first, then assess its persisted evidence.
+            </div>
+          )}
+          {repositoryReadinessError && (
+            <div className="inline-error">Readiness assessment failed: {repositoryReadinessError}</div>
+          )}
+          {repositoryReadiness && (
+            <div className="readiness-results" aria-live="polite">
+              <div className="readiness-heading">
+                <div>
+                  <span className="section-kicker">Evidence-Based Readiness</span>
+                  <h3>Repository readiness</h3>
+                </div>
+                <span className={`readiness-status ${repositoryReadiness.overall_status}`}>
+                  {formatOperation(repositoryReadiness.overall_status)}
+                </span>
+              </div>
+              <div className="readiness-grid">
+                {repositoryReadiness.dimensions.map((dimension) => (
+                  <article className="readiness-card" key={dimension.id}>
+                    <div>
+                      <strong>{formatOperation(dimension.id)}</strong>
+                      <span className={`readiness-status ${dimension.status}`}>{formatOperation(dimension.status)}</span>
+                    </div>
+                    <p>{dimension.explanation}</p>
+                    {dimension.findings.length > 0 && (
+                      <div className="readiness-findings">
+                        {dimension.findings.map((finding) => (
+                          <div className={`readiness-finding ${finding.severity}`} key={finding.id}>
+                            <span>{finding.required ? "Required" : finding.severity}</span>
+                            <p>{finding.description}</p>
+                            {finding.evidence_paths.map((path) => <code key={path}>{path}</code>)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {dimension.missing_prerequisites.length > 0 && (
+                      <ReadinessList title="Missing prerequisites" items={dimension.missing_prerequisites} />
+                    )}
+                    {dimension.warnings.length > 0 && (
+                      <ReadinessList title="Warnings and recommendations" items={dimension.warnings} />
+                    )}
+                    {dimension.unknown_conditions.length > 0 && (
+                      <ReadinessList title="Unknown or unverified" items={dimension.unknown_conditions} />
+                    )}
+                  </article>
+                ))}
+              </div>
+              <small>
+                Assessment report: <code>{shortIdentifier(repositoryReadiness.report_id)}</code>
+                {" · "}Analysis report: <code>{shortIdentifier(repositoryReadiness.analysis_report_id)}</code>
+                {" · "}{relativeTime(repositoryReadiness.assessed_at)}
+              </small>
+            </div>
+          )}
+        </section>
+
+        <section className="panel repository-analysis-panel" id="container-build" aria-label="Container build engine">
+          <div className="panel-heading">
+            <div>
+              <span className="section-kicker">Controlled Build</span>
+              <h2>Container build eligibility</h2>
+              <p>Builds require matching analysis and readiness evidence, an immutable source snapshot, explicit approval, and a verified isolated worker. Static readiness is never presented as build success.</p>
+            </div>
+            <span className="data-source">{isDemoMode ? "Unavailable in Demo Mode" : "Execution disabled unless isolated"}</span>
+          </div>
+          <div className="repository-analysis-form">
+            <label>
+              Project
+              <select
+                aria-label="Container build project"
+                value={buildProjectId}
+                disabled={isDemoMode || isValidatingBuild || isBuildingContainer}
+                onChange={(event) => void loadBuildEvidence(event.target.value)}
+              >
+                <option value="">Select project</option>
+                {projects.filter((project) => !project.archived_at).map((project) => (
+                  <option value={project.id} key={project.id}>{project.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Image name
+              <input value={buildForm.imageName} onChange={(event) => setBuildForm({ ...buildForm, imageName: event.target.value })} />
+            </label>
+            <label>
+              Image tag
+              <input value={buildForm.imageTag} onChange={(event) => setBuildForm({ ...buildForm, imageTag: event.target.value })} />
+            </label>
+          </div>
+          <div className="snapshot-panel" aria-label="Immutable source snapshots">
+            <div className="readiness-heading">
+              <div>
+                <span className="section-kicker">Exact Build Input</span>
+                <h3>Source snapshots</h3>
+              </div>
+              <button
+                type="button"
+                disabled={isDemoMode || !buildProjectId || isCreatingSnapshot}
+                onClick={() => void handleCreateSourceSnapshot()}
+              >
+                <HardDrive size={16} /> {isCreatingSnapshot ? "Creating…" : "Create snapshot"}
+              </button>
+            </div>
+            {isDemoMode && <div className="empty-analysis">Demo Mode never fabricates source snapshots or integrity checks.</div>}
+            {!isDemoMode && buildProjectId && sourceSnapshots.length === 0 && !sourceSnapshotError && (
+              <div className="empty-analysis">No immutable source snapshot exists for this project.</div>
+            )}
+            {sourceSnapshotError && <div className="inline-error">Snapshot workflow: {sourceSnapshotError}</div>}
+            {sourceSnapshots.length > 0 && (
+              <div className="snapshot-list">
+                {sourceSnapshots.map((snapshot) => (
+                  <article className="snapshot-card" key={snapshot.id}>
+                    <div>
+                      <strong>{formatOperation(snapshot.source)} · {formatOperation(snapshot.status)}</strong>
+                      <span>{snapshot.source_identity.commit_sha
+                        ? `Commit ${shortIdentifier(snapshot.source_identity.commit_sha)}`
+                        : `Submission ${shortIdentifier(snapshot.source_identity.submission_id ?? "")}`}</span>
+                    </div>
+                    <span>{snapshot.file_count} files · {snapshot.total_content_size.toLocaleString()} bytes</span>
+                    <span>
+                      {snapshot.exclusions.reduce((total, item) => total + item.count, 0)} excluded
+                      {snapshot.source_identity.resolved_reference ? ` · ref ${snapshot.source_identity.resolved_reference}` : ""}
+                    </span>
+                    <span>Integrity: {snapshot.integrity_verified ? "verified" : "not verified"}</span>
+                    <code>{snapshot.integrity_hash ?? "Integrity hash unavailable"}</code>
+                    <small>
+                      Snapshot {shortIdentifier(snapshot.id)} · created {relativeTime(snapshot.created_at)}
+                      {snapshot.expires_at ? ` · expires ${relativeTime(snapshot.expires_at)}` : ""}
+                    </small>
+                    {snapshot.error && <div className="inline-error">{snapshot.error}</div>}
+                    <div className="snapshot-actions">
+                      <button type="button" disabled={snapshot.status !== "available"} onClick={() => void handleVerifySourceSnapshot(snapshot.id)}>
+                        <ShieldCheck size={14} /> Verify
+                      </button>
+                      <button type="button" disabled={["creating", "deleted"].includes(snapshot.status)} onClick={() => void handleDeleteSourceSnapshot(snapshot.id)}>
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="repository-analysis-form">
+            <label>
+              Dockerfile path
+              <input value={buildForm.dockerfilePath} onChange={(event) => setBuildForm({ ...buildForm, dockerfilePath: event.target.value })} />
+            </label>
+            <button type="button" disabled={isDemoMode || !buildProjectId || isValidatingBuild || isBuildingContainer} onClick={() => void handleBuildValidation()}>
+              <ShieldCheck size={16} /> {isValidatingBuild ? "Validating…" : "Validate eligibility"}
+            </button>
+          </div>
+          {buildEligibility && (
+            <div className="analysis-results" aria-live="polite">
+              <div className="analysis-summary">
+                <span className={`finding-status ${buildEligibility.eligible ? "detected" : "missing"}`}>
+                  {buildEligibility.eligible ? "Eligible" : "Blocked"}
+                </span>
+                <strong>{buildEligibility.image_name}:{buildEligibility.image_tag}</strong>
+                <span>{buildEligibility.source_snapshot_id ? `Snapshot ${shortIdentifier(buildEligibility.source_snapshot_id)}` : "No immutable snapshot"}</span>
+                <span>Worker: {formatOperation(buildEligibility.worker_availability)}</span>
+                <span>Network: {formatOperation(buildEligibility.network_policy)}</span>
+              </div>
+              <div className="analysis-findings">
+                {buildEligibility.findings.map((finding) => (
+                  <article className="analysis-finding" key={finding.code}>
+                    <div><strong>{formatOperation(finding.code)}</strong><span>{finding.status}</span></div>
+                    <p>{finding.message}</p>
+                    {finding.evidence_paths.map((path) => <code key={path}>{path}</code>)}
+                  </article>
+                ))}
+              </div>
+              <label className="build-approval">
+                <input type="checkbox" checked={buildApproved} onChange={(event) => setBuildApproved(event.target.checked)} />
+                I explicitly approve this build request. Approval does not imply deployment.
+              </label>
+              <button type="button" disabled={!buildEligibility.eligible || !buildApproved || isBuildingContainer} onClick={() => void handleContainerBuild()}>
+                <Rocket size={16} /> {isBuildingContainer ? "Building…" : "Submit approved build"}
+              </button>
+            </div>
+          )}
+          {containerBuildError && <div className="inline-error">Build workflow: {containerBuildError}</div>}
+          {containerBuild && (
+            <div className="analysis-results" aria-live="polite">
+              <div className="analysis-summary">
+                <strong>Status: {formatOperation(containerBuild.status)}</strong>
+                <span>{containerBuild.image_name}:{containerBuild.image_tag}</span>
+                {containerBuild.image_digest && <code>{containerBuild.image_digest}</code>}
+                <span>{formatDuration(containerBuild.duration_ms)}</span>
+                {containerBuild.result_validation && <span>Result validation: {formatOperation(containerBuild.result_validation)}</span>}
+                {containerBuild.cleanup_status && <span>Cleanup: {formatOperation(containerBuild.cleanup_status)}</span>}
+              </div>
+              {containerBuild.failure_reason && <div className="inline-error">{containerBuild.failure_reason}</div>}
+              {containerBuildLogs && <pre className="build-logs">{containerBuildLogs}</pre>}
+              <small>Build report: <code>{shortIdentifier(containerBuild.report_id)}</code>. No deployment was performed.</small>
+            </div>
+          )}
+          {!buildEligibility && !containerBuildError && (
+            <div className="empty-analysis">Select a project and validate its persisted analysis/readiness evidence before requesting a build.</div>
+          )}
         </section>
 
         <section className={`hero-console ${healthTone}`} id="overview" aria-label="ClueStack overview">
@@ -1524,6 +2389,102 @@ function AlertCard({ alert }: { alert: AlertSummary }) {
   );
 }
 
+function ReadinessList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="readiness-list">
+      <strong>{title}</strong>
+      <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+    </div>
+  );
+}
+
+function AnalysisResultDetails({ result }: { result: RepositoryAnalysisResult }) {
+  return (
+    <div className="analysis-results" aria-live="polite">
+      <div className="analysis-summary">
+        <span className={`analysis-status ${result.retrieval_status}`}>{result.retrieval_status}</span>
+        <strong>{result.source_label}</strong>
+        <span>{result.source === "local_upload" ? "Local folder evidence" : "Public GitHub evidence"}</span>
+        {result.branch && result.commit_sha && (
+          <span>{result.branch} · <code>{result.commit_sha.slice(0, 12)}</code></span>
+        )}
+        <span>{result.files_retrieved} files · {result.content_bytes_retrieved.toLocaleString()} bytes</span>
+      </div>
+      <div className="analysis-findings">
+        {result.findings.map((finding) => (
+          <article className="analysis-finding" key={finding.category}>
+            <div>
+              <strong>{formatOperation(finding.category)}</strong>
+              <span className={`finding-status ${finding.status}`}>{finding.status}</span>
+            </div>
+            <p>{finding.values.length ? finding.values.join(", ") : finding.detail}</p>
+            {finding.evidence_paths.length > 0 && (
+              <ul>{finding.evidence_paths.map((path) => <li key={path}><code>{path}</code></li>)}</ul>
+            )}
+          </article>
+        ))}
+      </div>
+      {result.missing_prerequisites.length > 0 && (
+        <div className="analysis-notes">
+          <strong>Missing prerequisites</strong>
+          <ul>{result.missing_prerequisites.map((item) => <li key={item}>{item}</li>)}</ul>
+        </div>
+      )}
+      {result.warnings.length > 0 && (
+        <div className="analysis-notes warning">
+          <strong>Incomplete or limited evidence</strong>
+          <ul>{result.warnings.map((item) => <li key={item}>{item}</li>)}</ul>
+        </div>
+      )}
+      <small>Analysis report: <code>{shortIdentifier(result.report_id)}</code> · {relativeTime(result.analyzed_at)}</small>
+    </div>
+  );
+}
+
+function ReadinessResultDetails({ result }: { result: RepositoryReadinessResult }) {
+  return (
+    <div className="readiness-results" aria-live="polite">
+      <div className="readiness-heading">
+        <div>
+          <span className="section-kicker">Evidence-Based Readiness</span>
+          <h3>Repository readiness</h3>
+        </div>
+        <span className={`readiness-status ${result.overall_status}`}>{formatOperation(result.overall_status)}</span>
+      </div>
+      <div className="readiness-grid">
+        {result.dimensions.map((dimension) => (
+          <article className="readiness-card" key={dimension.id}>
+            <div>
+              <strong>{formatOperation(dimension.id)}</strong>
+              <span className={`readiness-status ${dimension.status}`}>{formatOperation(dimension.status)}</span>
+            </div>
+            <p>{dimension.explanation}</p>
+            {dimension.findings.length > 0 && (
+              <div className="readiness-findings">
+                {dimension.findings.map((finding) => (
+                  <div className={`readiness-finding ${finding.severity}`} key={finding.id}>
+                    <span>{finding.required ? "Required" : finding.severity}</span>
+                    <p>{finding.description}</p>
+                    {finding.evidence_paths.map((path) => <code key={path}>{path}</code>)}
+                  </div>
+                ))}
+              </div>
+            )}
+            {dimension.missing_prerequisites.length > 0 && <ReadinessList title="Missing prerequisites" items={dimension.missing_prerequisites} />}
+            {dimension.warnings.length > 0 && <ReadinessList title="Warnings and recommendations" items={dimension.warnings} />}
+            {dimension.unknown_conditions.length > 0 && <ReadinessList title="Unknown or unverified" items={dimension.unknown_conditions} />}
+          </article>
+        ))}
+      </div>
+      <small>
+        Assessment report: <code>{shortIdentifier(result.report_id)}</code>
+        {" · "}Analysis report: <code>{shortIdentifier(result.analysis_report_id)}</code>
+        {" · "}{relativeTime(result.assessed_at)}
+      </small>
+    </div>
+  );
+}
+
 function MiniStat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="mini-stat">
@@ -1759,6 +2720,11 @@ function maxValue(values: number[]) {
     return 0;
   }
   return Math.max(...values);
+}
+
+function repositoryRelativePath(path: string) {
+  const parts = path.split("/");
+  return parts.length > 1 ? parts.slice(1).join("/") : path;
 }
 
 export default App;

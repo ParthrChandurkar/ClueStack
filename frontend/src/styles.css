@@ -776,6 +776,15 @@ a {
   align-items: end;
 }
 
+.github-project-form {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+}
+
+.github-project-form > div:first-child {
+  grid-column: 1 / -1;
+}
+
 .project-create-form > div:first-child {
   align-self: center;
 }
@@ -807,6 +816,16 @@ a {
   border-radius: 8px;
   background: #2a1218;
   color: #ffb8c1;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.inline-success {
+  margin-top: 12px;
+  border: 1px solid #28684f;
+  border-radius: 8px;
+  background: #10261e;
+  color: #9ce5c5;
   padding: 10px 12px;
   font-size: 12px;
 }
@@ -2149,6 +2168,10 @@ td {
   .project-workspace-grid,
   .project-create-form {
     grid-template-columns: 1fr;
+  }
+
+  .github-project-form > div:first-child {
+    grid-column: auto;
   }
 }
 

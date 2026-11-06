@@ -86,6 +86,12 @@ import {
   repositoryReadinessViewState,
   repositoryRemoteAnalysisAllowed,
 } from "./repositoryAnalysisState";
+import {
+  buildLocalProjectCreate,
+  EMPTY_GITHUB_PROJECT_FORM,
+  registerGitHubProject,
+  validateGitHubProjectRegistration,
+} from "./githubProjectRegistration";
 import { summarizeLocalSelection, summarizeLocalSnapshotSelection } from "./localRepositorySelection";
 import { snapshotBuildCandidate } from "./sourceSnapshotState";
 
@@ -164,6 +170,10 @@ function App() {
     port: 8080,
   });
   const [projectForm, setProjectForm] = useState({ name: "", slug: "" });
+  const [githubProjectForm, setGitHubProjectForm] = useState(EMPTY_GITHUB_PROJECT_FORM);
+  const [isRegisteringGitHubProject, setIsRegisteringGitHubProject] = useState(false);
+  const [githubProjectError, setGitHubProjectError] = useState("");
+  const [githubProjectSuccess, setGitHubProjectSuccess] = useState("");
   const [selectedRepositoryProjectId, setSelectedRepositoryProjectId] = useState("");
   const [repositoryBranch, setRepositoryBranch] = useState("");
   const [repositoryAnalysis, setRepositoryAnalysis] = useState<RepositoryAnalysisResult | null>(null);
@@ -595,19 +605,56 @@ function App() {
     setIsCreatingProject(true);
     setProjectError("");
     try {
-      const created = await createProject({
-        name: projectForm.name.trim(),
-        slug: projectForm.slug.trim() || undefined,
-        mode: "local",
-        source_type: "manual",
-        default_namespace: "infrawatch",
-      });
+      const created = await createProject(buildLocalProjectCreate(projectForm.name, projectForm.slug));
       setProjectForm({ name: "", slug: "" });
       await refreshProjects(created.id, true);
     } catch (reason) {
       setProjectError(reason instanceof Error ? reason.message : "Project creation failed");
     } finally {
       setIsCreatingProject(false);
+    }
+  }
+
+  async function handleRegisterGitHubProject(event: FormEvent) {
+    event.preventDefault();
+    if (isRegisteringGitHubProject) {
+      return;
+    }
+    setGitHubProjectError("");
+    setGitHubProjectSuccess("");
+    if (isBrowserFallback) {
+      setGitHubProjectError("GitHub repository registration requires the ClueStack backend and is unavailable in browser Demo Mode.");
+      return;
+    }
+    const validationErrors = validateGitHubProjectRegistration(githubProjectForm);
+    if (Object.keys(validationErrors).length > 0) {
+      setGitHubProjectError(Object.values(validationErrors).join(" "));
+      return;
+    }
+
+    setIsRegisteringGitHubProject(true);
+    let createdProject: ProjectRecord | null = null;
+    try {
+      createdProject = await registerGitHubProject(
+        githubProjectForm,
+        async (payload) => {
+          createdProject = await createProject(payload);
+          return createdProject;
+        },
+        async (created) => {
+          await refreshProjects();
+          selectRepositoryProject(created.id);
+        },
+      );
+      setGitHubProjectForm(EMPTY_GITHUB_PROJECT_FORM);
+      setGitHubProjectSuccess(`${createdProject.name} is registered and ready for read-only repository analysis.`);
+    } catch (reason) {
+      const detail = reason instanceof Error ? reason.message : "Repository registration failed";
+      setGitHubProjectError(createdProject
+        ? `Repository registration succeeded, but refreshing the project list failed: ${detail}`
+        : detail);
+    } finally {
+      setIsRegisteringGitHubProject(false);
     }
   }
 
@@ -1317,12 +1364,12 @@ function App() {
         {error && <div className="error-banner">{error}</div>}
         {observabilityError && <div className="error-banner">Observability unavailable: {observabilityError}</div>}
 
-        <section className="panel project-panel" id="projects" aria-label="Local project workspace">
+        <section className="panel project-panel" id="projects" aria-label="Project workspace">
           <div className="panel-heading">
             <div>
               <span className="section-kicker">Project Workspace</span>
-              <h2>Track local deployments by project</h2>
-              <p>Select a local project to scope its deployments and report history.</p>
+              <h2>Manage local and repository projects</h2>
+              <p>Scope local deployment history or register a public GitHub repository for read-only analysis.</p>
             </div>
             <span className="data-source">{isBrowserFallback ? "Browser-local demo data" : "ClueStack persistence"}</span>
           </div>
@@ -1392,8 +1439,81 @@ function App() {
                 {isCreatingProject ? "Creating…" : "Create project"}
               </button>
             </form>
+            <form className="project-create-form github-project-form" onSubmit={handleRegisterGitHubProject}>
+              <div>
+                <strong>Register public GitHub repository</strong>
+                <span>Stores repository metadata for read-only analysis. No credentials or private repository access.</span>
+              </div>
+              <label>
+                Project name
+                <input
+                  aria-label="GitHub project name"
+                  required
+                  minLength={2}
+                  maxLength={80}
+                  value={githubProjectForm.name}
+                  onChange={(event) => {
+                    setGitHubProjectForm({ ...githubProjectForm, name: event.target.value });
+                    setGitHubProjectError("");
+                    setGitHubProjectSuccess("");
+                  }}
+                  placeholder="Catalog Repository"
+                />
+              </label>
+              <label>
+                Repository URL
+                <input
+                  aria-label="GitHub repository URL"
+                  type="url"
+                  required
+                  maxLength={255}
+                  value={githubProjectForm.repositoryUrl}
+                  onChange={(event) => {
+                    setGitHubProjectForm({ ...githubProjectForm, repositoryUrl: event.target.value });
+                    setGitHubProjectError("");
+                    setGitHubProjectSuccess("");
+                  }}
+                  placeholder="https://github.com/owner/repository"
+                />
+              </label>
+              <label>
+                Description <span>(optional)</span>
+                <input
+                  aria-label="GitHub project description"
+                  maxLength={500}
+                  value={githubProjectForm.description}
+                  onChange={(event) => {
+                    setGitHubProjectForm({ ...githubProjectForm, description: event.target.value });
+                    setGitHubProjectError("");
+                    setGitHubProjectSuccess("");
+                  }}
+                  placeholder="Public service repository"
+                />
+              </label>
+              <label>
+                Default namespace
+                <input
+                  aria-label="GitHub project default namespace"
+                  required
+                  minLength={2}
+                  maxLength={63}
+                  pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?"
+                  value={githubProjectForm.defaultNamespace}
+                  onChange={(event) => {
+                    setGitHubProjectForm({ ...githubProjectForm, defaultNamespace: event.target.value });
+                    setGitHubProjectError("");
+                    setGitHubProjectSuccess("");
+                  }}
+                />
+              </label>
+              <button type="submit" disabled={isBrowserFallback || isRegisteringGitHubProject}>
+                {isRegisteringGitHubProject ? "Registering…" : "Register repository"}
+              </button>
+            </form>
           </div>
           {projectError && <div className="inline-error">Project data unavailable: {projectError}</div>}
+          {githubProjectError && <div className="inline-error" role="alert">Repository registration failed: {githubProjectError}</div>}
+          {githubProjectSuccess && <div className="inline-success" role="status">{githubProjectSuccess}</div>}
         </section>
 
         <section className="panel repository-analysis-panel" id="local-repository-analysis" aria-label="Local repository analysis">

@@ -237,7 +237,8 @@ class GitHubRepositoryClient:
                     warnings.append(f"Skipped {candidate['path']}: unsupported GitHub blob encoding.")
                     continue
                 try:
-                    decoded = base64.b64decode(blob_data["content"], validate=True)
+                    encoded_content = "".join(blob_data["content"].split())
+                    decoded = base64.b64decode(encoded_content, validate=True)
                 except (ValueError, TypeError):
                     warnings.append(f"Skipped {candidate['path']}: invalid encoded content.")
                     continue

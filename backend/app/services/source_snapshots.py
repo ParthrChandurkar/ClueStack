@@ -280,7 +280,8 @@ class GitHubSnapshotAcquirer:
                         "GitHub returned an unsupported blob encoding.", status_code=502, code="unsupported_blob"
                     )
                 try:
-                    content = base64.b64decode(blob["content"], validate=True)
+                    encoded_content = "".join(blob["content"].split())
+                    content = base64.b64decode(encoded_content, validate=True)
                 except (ValueError, TypeError) as exc:
                     raise SourceSnapshotError(
                         "GitHub returned invalid blob content.", status_code=502, code="invalid_github_response"

@@ -20,7 +20,8 @@ from app.services.repository_analysis import (
 
 
 def _encoded(value: str) -> str:
-    return base64.b64encode(value.encode()).decode()
+    # GitHub blob responses wrap Base64 content across multiple lines.
+    return base64.encodebytes(value.encode()).decode()
 
 
 def github_transport(

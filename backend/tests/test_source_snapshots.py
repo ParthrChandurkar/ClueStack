@@ -197,7 +197,7 @@ def test_github_snapshot_resolves_branch_to_exact_commit_and_excludes_binary(tmp
             )
         if "/git/blobs/" in path:
             name = path.rsplit("/", 1)[-1]
-            return httpx.Response(200, json={"encoding": "base64", "content": base64.b64encode(blobs[name]).decode()})
+            return httpx.Response(200, json={"encoding": "base64", "content": base64.encodebytes(blobs[name]).decode()})
         return httpx.Response(404)
 
     client = build_client(tmp_path, httpx.MockTransport(handler))

@@ -328,6 +328,72 @@ export interface WorkloadHealth {
   source: string;
 }
 
+export interface KubernetesContextList {
+  enabled: boolean;
+  contexts: string[];
+  current_context: string | null;
+  message: string | null;
+}
+
+export interface KubernetesNodeCondition {
+  type: string;
+  status: string;
+  reason: string | null;
+  message: string | null;
+  last_transition_time: string | null;
+}
+
+export interface KubernetesNodeOverview {
+  name: string;
+  roles: string[];
+  kubernetes_version: string | null;
+  ready: boolean;
+  conditions: KubernetesNodeCondition[];
+}
+
+export interface KubernetesNamespacePodSummary {
+  namespace: string;
+  total: number;
+  running: number;
+  pending: number;
+  succeeded: number;
+  failed: number;
+  unknown: number;
+}
+
+export interface KubernetesPodSummary {
+  total: number;
+  running: number;
+  pending: number;
+  succeeded: number;
+  failed: number;
+  unknown: number;
+  namespaces: KubernetesNamespacePodSummary[];
+}
+
+export interface KubernetesResourceUsage {
+  available: boolean;
+  cpu_cores: number | null;
+  memory_bytes: number | null;
+  nodes_reporting: number;
+  message: string | null;
+}
+
+export interface KubernetesClusterOverview {
+  context: string;
+  connection_status: "connected";
+  server_version: string | null;
+  api_server: string | null;
+  cluster_identity: string | null;
+  total_nodes: number;
+  ready_nodes: number;
+  not_ready_nodes: number;
+  nodes: KubernetesNodeOverview[];
+  pods: KubernetesPodSummary;
+  resource_usage: KubernetesResourceUsage;
+  refreshed_at: string;
+}
+
 export interface LogLine {
   timestamp: string;
   line: string;

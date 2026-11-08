@@ -11,6 +11,8 @@ import type {
   DeploymentReportRecord,
   LogsResponse,
   LocalRepositoryAnalysisPayload,
+  KubernetesClusterOverview,
+  KubernetesContextList,
   ProjectCreate,
   ProjectRecord,
   RepositoryAnalysisResult,
@@ -94,7 +96,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
             ))
             .filter(Boolean)
             .join("; ")
-        : response.statusText;
+        : typeof body.detail === "object"
+          && body.detail !== null
+          && "message" in body.detail
+          && typeof body.detail.message === "string"
+          ? body.detail.message
+          : response.statusText;
     throw new ApiResponseError(detail || response.statusText, response.status);
   }
 
@@ -144,6 +151,25 @@ export function getDefaultLocalProject(): Promise<ProjectRecord> {
     () => request<ProjectRecord>("/projects/default-local"),
     () => getDemoDefaultLocalProject(),
   );
+}
+
+export function listKubernetesContexts(): Promise<KubernetesContextList> {
+  if (isDemoMode) {
+    return Promise.resolve({
+      enabled: false,
+      contexts: [],
+      current_context: null,
+      message: "Kubernetes Cluster Overview is unavailable in browser Demo Mode.",
+    });
+  }
+  return request<KubernetesContextList>("/kubernetes/contexts");
+}
+
+export function getKubernetesClusterOverview(context: string): Promise<KubernetesClusterOverview> {
+  if (isDemoMode) {
+    return Promise.reject(new Error("Kubernetes Cluster Overview is unavailable in browser Demo Mode."));
+  }
+  return request<KubernetesClusterOverview>(`/kubernetes/overview?context=${encodeURIComponent(context)}`);
 }
 
 export function listProjectDeployments(projectId: string): Promise<DeploymentRecord[]> {

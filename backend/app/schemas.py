@@ -711,6 +711,86 @@ class WorkloadHealth(BaseModel):
     source: str
 
 
+class KubernetesContextList(BaseModel):
+    """Safe kubeconfig context names available for explicit selection."""
+
+    enabled: bool
+    contexts: list[str] = Field(default_factory=list)
+    current_context: str | None = None
+    message: str | None = None
+
+
+class KubernetesNodeCondition(BaseModel):
+    """One bounded Kubernetes node condition."""
+
+    type: str
+    status: str
+    reason: str | None = None
+    message: str | None = None
+    last_transition_time: datetime | None = None
+
+
+class KubernetesNodeOverview(BaseModel):
+    """Read-only identity and health details for one cluster node."""
+
+    name: str
+    roles: list[str] = Field(default_factory=list)
+    kubernetes_version: str | None = None
+    ready: bool
+    conditions: list[KubernetesNodeCondition] = Field(default_factory=list)
+
+
+class KubernetesNamespacePodSummary(BaseModel):
+    """Pod phase totals for one namespace."""
+
+    namespace: str
+    total: int
+    running: int = 0
+    pending: int = 0
+    succeeded: int = 0
+    failed: int = 0
+    unknown: int = 0
+
+
+class KubernetesPodSummary(BaseModel):
+    """Cluster-wide Pod phase totals and namespace distribution."""
+
+    total: int
+    running: int = 0
+    pending: int = 0
+    succeeded: int = 0
+    failed: int = 0
+    unknown: int = 0
+    namespaces: list[KubernetesNamespacePodSummary] = Field(default_factory=list)
+
+
+class KubernetesResourceUsage(BaseModel):
+    """Aggregate node usage, available only from the Kubernetes Metrics API."""
+
+    available: bool
+    cpu_cores: float | None = None
+    memory_bytes: int | None = None
+    nodes_reporting: int = 0
+    message: str | None = None
+
+
+class KubernetesClusterOverview(BaseModel):
+    """Consolidated read-only view of an explicitly selected cluster context."""
+
+    context: str
+    connection_status: Literal["connected"] = "connected"
+    server_version: str | None = None
+    api_server: str | None = None
+    cluster_identity: str | None = None
+    total_nodes: int
+    ready_nodes: int
+    not_ready_nodes: int
+    nodes: list[KubernetesNodeOverview] = Field(default_factory=list)
+    pods: KubernetesPodSummary
+    resource_usage: KubernetesResourceUsage
+    refreshed_at: datetime
+
+
 class LogLine(BaseModel):
     """Single log event returned from Loki or demo fallback data."""
 

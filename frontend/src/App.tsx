@@ -47,12 +47,14 @@ import {
   getAlerts,
   getLogs,
   getMetrics,
+  getKubernetesClusterOverview,
   getWorkloadHealth,
   isDemoMode,
   listAuditLogs,
   listProjectDeployments,
   listProjectReports,
   listProjects,
+  listKubernetesContexts,
   listSourceSnapshots,
   resetSandbox,
   rollbackDeployment,
@@ -72,6 +74,8 @@ import type {
   DeploymentStatus,
   LogsResponse,
   LocalRepositoryAnalysisFile,
+  KubernetesClusterOverview,
+  KubernetesContextList,
   ProjectRecord,
   RepositoryAnalysisResult,
   RepositoryReadinessResult,
@@ -94,6 +98,7 @@ import {
 } from "./githubProjectRegistration";
 import { summarizeLocalSelection, summarizeLocalSnapshotSelection } from "./localRepositorySelection";
 import { snapshotBuildCandidate } from "./sourceSnapshotState";
+import { canRefreshCluster, clusterOverviewViewState } from "./clusterOverviewState";
 
 const STATUS_THEME: Record<DeploymentStatus, { color: string; label: string; icon: ReactNode }> = {
   Running: { color: "#3ddc97", label: "Healthy", icon: <CheckCircle2 size={14} /> },
@@ -135,6 +140,11 @@ function App() {
   const [workload, setWorkload] = useState<WorkloadHealth | null>(null);
   const [logs, setLogs] = useState<LogsResponse>(EMPTY_LOGS);
   const [alerts, setAlerts] = useState<AlertsResponse>(EMPTY_ALERTS);
+  const [kubernetesContexts, setKubernetesContexts] = useState<KubernetesContextList | null>(null);
+  const [selectedKubernetesContext, setSelectedKubernetesContext] = useState("");
+  const [clusterOverview, setClusterOverview] = useState<KubernetesClusterOverview | null>(null);
+  const [clusterOverviewError, setClusterOverviewError] = useState("");
+  const [isClusterOverviewLoading, setIsClusterOverviewLoading] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isObservabilityLoading, setIsObservabilityLoading] = useState(false);
@@ -162,6 +172,7 @@ function App() {
   const localRepositoryAnalysisRequest = useRef(0);
   const containerBuildRequest = useRef(0);
   const sourceSnapshotRequest = useRef(0);
+  const clusterOverviewRequest = useRef(0);
   const localFolderInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     name: "catalog-api",
@@ -237,8 +248,38 @@ function App() {
     localRepositoryReadinessError,
   );
   const remoteAnalysisAllowed = repositoryRemoteAnalysisAllowed(isDemoMode);
+  const clusterViewState = clusterOverviewViewState(
+    isClusterOverviewLoading,
+    kubernetesContexts,
+    clusterOverview,
+    clusterOverviewError,
+  );
 
   useEffect(() => subscribeToApiFallback(setUsingApiFallback), []);
+
+  useEffect(() => {
+    let isMounted = true;
+    clusterOverviewRequest.current += 1;
+    setIsClusterOverviewLoading(true);
+    setClusterOverviewError("");
+    listKubernetesContexts()
+      .then((result) => {
+        if (!isMounted) return;
+        setKubernetesContexts(result);
+        setSelectedKubernetesContext((current) => result.contexts.includes(current) ? current : "");
+        setClusterOverview(null);
+      })
+      .catch((reason) => {
+        if (!isMounted) return;
+        setKubernetesContexts(null);
+        setClusterOverview(null);
+        setClusterOverviewError(reason instanceof Error ? reason.message : "Kubernetes contexts are unavailable");
+      })
+      .finally(() => isMounted && setIsClusterOverviewLoading(false));
+    return () => {
+      isMounted = false;
+    };
+  }, [isBrowserFallback]);
 
   useEffect(() => {
     selectedProjectIdRef.current = selectedProjectId;
@@ -655,6 +696,35 @@ function App() {
         : detail);
     } finally {
       setIsRegisteringGitHubProject(false);
+    }
+  }
+
+  async function handleClusterOverviewRefresh() {
+    if (!canRefreshCluster(
+      selectedKubernetesContext,
+      isClusterOverviewLoading,
+      Boolean(kubernetesContexts?.enabled),
+    )) {
+      return;
+    }
+    const requestedContext = selectedKubernetesContext;
+    const requestId = ++clusterOverviewRequest.current;
+    setIsClusterOverviewLoading(true);
+    setClusterOverviewError("");
+    try {
+      const result = await getKubernetesClusterOverview(requestedContext);
+      if (requestId === clusterOverviewRequest.current) {
+        setClusterOverview(result);
+      }
+    } catch (reason) {
+      if (requestId === clusterOverviewRequest.current) {
+        setClusterOverview(null);
+        setClusterOverviewError(reason instanceof Error ? reason.message : "Cluster overview is unavailable");
+      }
+    } finally {
+      if (requestId === clusterOverviewRequest.current) {
+        setIsClusterOverviewLoading(false);
+      }
     }
   }
 
@@ -1272,6 +1342,7 @@ function App() {
         <nav className="sidebar-nav" aria-label="Dashboard sections">
           <a href="#projects">Projects</a>
           <a href="#repository-analysis">Repository Analysis</a>
+          <a href="#kubernetes-cluster">Kubernetes</a>
           <a href="#overview">Overview</a>
           <a href="#deploy">Deploy</a>
           <a href="#workloads">Workloads</a>
@@ -1514,6 +1585,150 @@ function App() {
           {projectError && <div className="inline-error">Project data unavailable: {projectError}</div>}
           {githubProjectError && <div className="inline-error" role="alert">Repository registration failed: {githubProjectError}</div>}
           {githubProjectSuccess && <div className="inline-success" role="status">{githubProjectSuccess}</div>}
+        </section>
+
+        <section className="panel cluster-overview-panel" id="kubernetes-cluster" aria-label="Kubernetes Cluster Overview">
+          <div className="panel-heading">
+            <div>
+              <span className="section-kicker">Kubernetes</span>
+              <h2><Server size={19} /> Cluster Overview</h2>
+              <p>Read-only cluster inventory for an explicitly selected kubeconfig context.</p>
+            </div>
+            <span className="data-source">
+              {clusterOverview ? `Live · ${clusterOverview.context}` : "No cluster selected"}
+            </span>
+          </div>
+
+          <div className="cluster-toolbar">
+            <label>
+              Kubernetes context
+              <select
+                aria-label="Kubernetes context"
+                value={selectedKubernetesContext}
+                disabled={!kubernetesContexts?.enabled || isClusterOverviewLoading}
+                onChange={(event) => {
+                  clusterOverviewRequest.current += 1;
+                  setSelectedKubernetesContext(event.target.value);
+                  setClusterOverview(null);
+                  setClusterOverviewError("");
+                  setIsClusterOverviewLoading(false);
+                }}
+              >
+                <option value="">Select a context</option>
+                {kubernetesContexts?.contexts.map((context) => (
+                  <option value={context} key={context}>{context}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleClusterOverviewRefresh}
+              disabled={!canRefreshCluster(
+                selectedKubernetesContext,
+                isClusterOverviewLoading,
+                Boolean(kubernetesContexts?.enabled),
+              )}
+            >
+              <RefreshCw size={16} />
+              {isClusterOverviewLoading ? "Refreshing…" : "Refresh cluster"}
+            </button>
+            <div className="cluster-context-note">
+              <strong>Selected:</strong> {selectedKubernetesContext || "None"}
+              {kubernetesContexts?.current_context && (
+                <span>Current kubectl context: {kubernetesContexts.current_context}</span>
+              )}
+            </div>
+          </div>
+
+          {clusterViewState === "loading" && (
+            <div className="cluster-state" role="status">Loading Kubernetes context information…</div>
+          )}
+          {clusterViewState === "disabled" && (
+            <div className="cluster-state warning-state">
+              {kubernetesContexts?.message || "Kubernetes access is disabled. Enable it explicitly in backend configuration."}
+            </div>
+          )}
+          {clusterViewState === "error" && (
+            <div className="inline-error" role="alert">Cluster overview unavailable: {clusterOverviewError}</div>
+          )}
+          {clusterViewState === "empty" && (
+            <div className="cluster-state">No safe Kubernetes contexts were found in the backend kubeconfig.</div>
+          )}
+          {clusterViewState === "idle" && kubernetesContexts?.enabled && (
+            <div className="cluster-state">Select a context to connect. ClueStack will not change your global kubectl context.</div>
+          )}
+
+          {clusterViewState === "success" && clusterOverview && (
+            <div className="cluster-overview-content">
+              <div className="cluster-stat-grid">
+                <ClusterStat label="Connection" value="Connected" detail={clusterOverview.api_server || "API endpoint unavailable"} />
+                <ClusterStat label="Kubernetes" value={clusterOverview.server_version || "Unknown"} detail={`Context: ${clusterOverview.context}`} />
+                <ClusterStat label="Nodes" value={`${clusterOverview.ready_nodes}/${clusterOverview.total_nodes} ready`} detail={`${clusterOverview.not_ready_nodes} NotReady`} />
+                <ClusterStat label="Pods" value={`${clusterOverview.pods.running}/${clusterOverview.pods.total} running`} detail={`${clusterOverview.pods.pending} pending · ${clusterOverview.pods.failed} failed`} />
+                <ClusterStat
+                  label="CPU usage"
+                  value={clusterOverview.resource_usage.available && clusterOverview.resource_usage.cpu_cores !== null
+                    ? `${clusterOverview.resource_usage.cpu_cores.toFixed(3)} cores`
+                    : "Unavailable"}
+                  detail={clusterOverview.resource_usage.available
+                    ? `${clusterOverview.resource_usage.nodes_reporting} node(s) reporting`
+                    : clusterOverview.resource_usage.message || "Metrics API unavailable"}
+                />
+                <ClusterStat
+                  label="Memory usage"
+                  value={clusterOverview.resource_usage.available && clusterOverview.resource_usage.memory_bytes !== null
+                    ? formatBytes(clusterOverview.resource_usage.memory_bytes)
+                    : "Unavailable"}
+                  detail="Aggregate node usage from metrics.k8s.io"
+                />
+              </div>
+
+              <div className="cluster-table-grid">
+                <div>
+                  <h3>Nodes</h3>
+                  <div className="table-wrap">
+                    <table className="cluster-table">
+                      <thead><tr><th>Node</th><th>Roles</th><th>Version</th><th>Ready</th><th>Condition</th></tr></thead>
+                      <tbody>
+                        {clusterOverview.nodes.map((node) => {
+                          const readyCondition = node.conditions.find((condition) => condition.type === "Ready");
+                          return (
+                            <tr key={node.name}>
+                              <td>{node.name}</td>
+                              <td>{node.roles.join(", ") || "worker"}</td>
+                              <td>{node.kubernetes_version || "Unknown"}</td>
+                              <td><span className={`cluster-health ${node.ready ? "ready" : "not-ready"}`}>{node.ready ? "Ready" : "NotReady"}</span></td>
+                              <td>{readyCondition?.reason || "Not reported"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div>
+                  <h3>Pods by namespace</h3>
+                  <div className="table-wrap">
+                    <table className="cluster-table">
+                      <thead><tr><th>Namespace</th><th>Total</th><th>Running</th><th>Pending</th><th>Failed</th></tr></thead>
+                      <tbody>
+                        {clusterOverview.pods.namespaces.map((namespace) => (
+                          <tr key={namespace.namespace}>
+                            <td>{namespace.namespace}</td>
+                            <td>{namespace.total}</td>
+                            <td>{namespace.running}</td>
+                            <td>{namespace.pending}</td>
+                            <td>{namespace.failed}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <p className="cluster-refreshed">Last refreshed: {new Date(clusterOverview.refreshed_at).toLocaleString()}</p>
+            </div>
+          )}
         </section>
 
         <section className="panel repository-analysis-panel" id="local-repository-analysis" aria-label="Local repository analysis">
@@ -2626,6 +2841,16 @@ function SummaryCard({ icon, label, value, tone }: { icon: ReactNode; label: str
   );
 }
 
+function ClusterStat({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <article className="cluster-stat">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </article>
+  );
+}
+
 function DemoModeBanner() {
   return (
     <section className="demo-mode-banner" role="note" aria-label="Demo Mode">
@@ -2806,6 +3031,13 @@ function formatDuration(durationMs: number | null) {
     return `${durationMs} ms`;
   }
   return `${(durationMs / 1_000).toFixed(durationMs < 10_000 ? 1 : 0)} s`;
+}
+
+function formatBytes(value: number) {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KiB`;
+  if (value < 1024 ** 3) return `${(value / 1024 ** 2).toFixed(1)} MiB`;
+  return `${(value / 1024 ** 3).toFixed(2)} GiB`;
 }
 
 function relativeTime(value: string) {

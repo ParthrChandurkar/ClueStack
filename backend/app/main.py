@@ -33,6 +33,7 @@ from app.services.build_workers import (
 )
 from app.services.container_builds import ContainerBuildService, WorkerBuildExecutor
 from app.services.deployments import DeploymentService
+from app.services.kubernetes_clusters import KubernetesClusterService
 from app.services.local_repository_analysis import LocalRepositoryAnalysisService
 from app.services.observability import AlertmanagerClient, LokiClient, PrometheusClient
 from app.services.projects import ProjectService
@@ -138,6 +139,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.prometheus_client = PrometheusClient(active_settings)
     app.state.loki_client = LokiClient(active_settings)
     app.state.alertmanager_client = AlertmanagerClient(active_settings)
+    app.state.kubernetes_cluster_service = KubernetesClusterService(active_settings)
 
     if active_settings.seed_demo_data and not repository.list():
         _seed_demo_deployments(app.state.deployment_service)

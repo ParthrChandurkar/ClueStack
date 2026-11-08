@@ -830,6 +830,152 @@ a {
   font-size: 12px;
 }
 
+.cluster-overview-panel {
+  background:
+    radial-gradient(circle at top right, rgba(61, 220, 151, 0.08), transparent 35%),
+    rgba(18, 24, 32, 0.94);
+}
+
+.cluster-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto minmax(240px, 0.8fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.cluster-toolbar label,
+.cluster-context-note {
+  display: grid;
+  gap: 6px;
+  color: #9aa4b2;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cluster-toolbar select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #334050;
+  border-radius: 8px;
+  background: #0a0f16;
+  color: #f4f7fb;
+  padding: 0 11px;
+}
+
+.cluster-toolbar button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.cluster-context-note {
+  min-height: 42px;
+  justify-content: center;
+  border-left: 2px solid #334050;
+  padding-left: 12px;
+}
+
+.cluster-context-note strong {
+  color: #f4f7fb;
+}
+
+.cluster-context-note span {
+  font-weight: 500;
+}
+
+.cluster-state {
+  margin-top: 16px;
+  border: 1px dashed #354252;
+  border-radius: 10px;
+  background: #0c1117;
+  color: #b8c1cc;
+  padding: 18px;
+  text-align: center;
+}
+
+.cluster-state.warning-state {
+  border-color: #7c5f25;
+  background: #211b0d;
+  color: #f1cf83;
+}
+
+.cluster-overview-content {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.cluster-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cluster-stat {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid #2d3743;
+  border-radius: 10px;
+  background: #0c121a;
+  padding: 13px;
+}
+
+.cluster-stat span,
+.cluster-stat small {
+  color: #9aa4b2;
+}
+
+.cluster-stat strong {
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.cluster-table-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 16px;
+}
+
+.cluster-table-grid > div {
+  min-width: 0;
+  border: 1px solid #2d3743;
+  border-radius: 10px;
+  background: #0c121a;
+  padding: 12px;
+}
+
+.cluster-table-grid h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.cluster-table {
+  min-width: 560px;
+}
+
+.cluster-health {
+  font-weight: 900;
+}
+
+.cluster-health.ready {
+  color: #3ddc97;
+}
+
+.cluster-health.not-ready {
+  color: #ff6b7a;
+}
+
+.cluster-refreshed {
+  margin: 0;
+  color: #8d99a7;
+  font-size: 11px;
+  text-align: right;
+}
+
 .demo-mode-banner {
   display: grid;
   grid-template-columns: auto minmax(260px, 1fr) auto;
@@ -2172,6 +2318,17 @@ td {
 
   .github-project-form > div:first-child {
     grid-column: auto;
+  }
+
+  .cluster-toolbar,
+  .cluster-stat-grid,
+  .cluster-table-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cluster-context-note {
+    border-left: 0;
+    padding-left: 0;
   }
 }
 

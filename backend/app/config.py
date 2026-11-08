@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     kubectl_binary: str = "kubectl"
     kubectl_namespace: str = "infrawatch"
     rollout_timeout_seconds: int = Field(default=180, ge=30, le=900)
+    kubeconfig_path: str | None = None
+    kubernetes_request_timeout_seconds: float = Field(default=10.0, ge=1.0, le=30.0)
 
     prometheus_url: str = "http://prometheus:9090"
     loki_url: str = "http://loki:3100"

@@ -20,6 +20,8 @@ from app.schemas import (
     DeploymentReportRecord,
     DeploymentRequest,
     DeploymentResponse,
+    KubernetesClusterOverview,
+    KubernetesContextList,
     LocalRepositoryAnalysisRequest,
     LogsResponse,
     ProjectCreate,
@@ -36,6 +38,7 @@ from app.schemas import (
 )
 from app.services.container_builds import ContainerBuildError
 from app.services.deployments import DeploymentExecutionError
+from app.services.kubernetes_clusters import KubernetesIntegrationError
 from app.services.local_repository_analysis import LocalRepositoryAnalysisError
 from app.services.projects import ProjectConflictError, ProjectModeError, ProjectNotFoundError
 from app.services.repository_analysis import RepositoryAnalysisError
@@ -65,6 +68,35 @@ def build_router() -> APIRouter:
             "observability_mode": "prometheus-loki" if not settings.allow_mock_observability else "fallback-enabled",
             "persistence_mode": "postgresql" if settings.database_url else "json-file",
         }
+
+    @router.get("/kubernetes/contexts", response_model=KubernetesContextList, tags=["kubernetes"])
+    async def kubernetes_contexts(request: Request) -> KubernetesContextList:
+        """List safe context names without changing the user's active kubectl context."""
+
+        with REQUEST_TIMER.labels(route="/kubernetes/contexts").time():
+            try:
+                return request.app.state.kubernetes_cluster_service.list_contexts()
+            except KubernetesIntegrationError as exc:
+                raise HTTPException(
+                    status_code=exc.status_code,
+                    detail={"code": exc.code, "message": exc.public_message},
+                ) from exc
+
+    @router.get("/kubernetes/overview", response_model=KubernetesClusterOverview, tags=["kubernetes"])
+    async def kubernetes_overview(
+        request: Request,
+        context: str = Query(..., min_length=1, max_length=253, pattern=r"^[^\x00-\x1f\x7f]+$"),
+    ) -> KubernetesClusterOverview:
+        """Return one consolidated read-only overview for an explicitly selected context."""
+
+        with REQUEST_TIMER.labels(route="/kubernetes/overview").time():
+            try:
+                return request.app.state.kubernetes_cluster_service.overview(context)
+            except KubernetesIntegrationError as exc:
+                raise HTTPException(
+                    status_code=exc.status_code,
+                    detail={"code": exc.code, "message": exc.public_message},
+                ) from exc
 
     @router.post(
         "/deploy",

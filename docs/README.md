@@ -8,6 +8,8 @@ This directory contains the canonical project documentation for running, underst
 - [Architecture](ARCHITECTURE.md) — component responsibilities, data sources, and ownership boundaries.
 - [Troubleshooting](TROUBLESHOOTING.md) — common local setup problems and safe diagnostic steps.
 
+- [Kubernetes read-only access](KUBERNETES_ACCESS.md) — Cluster Overview context selection and minimum RBAC permissions.
+
 ## Project direction
 
 - [Scope](../SCOPE.md) — current purpose, supported capabilities, limitations, and non-goals.

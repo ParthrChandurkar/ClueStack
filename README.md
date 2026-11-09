@@ -373,6 +373,21 @@ The GitHub Actions workflow validates backend, CLI, frontend, Docker Compose, Ku
 
 The workflow can publish Docker images when DockerHub credentials are configured. Remote Kubernetes deployment requires `KUBE_CONFIG_B64`; if that secret is missing, deployment is skipped. A GitHub-hosted runner cannot directly reach a laptop-only Minikube cluster. The repository includes a separate self-hosted runner path for local Minikube use.
 
+### Optional self-hosted Minikube deployment
+
+The `deploy-local-minikube` job runs only for a push or manual dispatch on `main`, after image publishing succeeds, and only when the repository variable `INFRAWATCH_DEPLOY_TARGET` is explicitly set to `local-minikube`. Leave that variable unset to keep this job disabled. It requires a trusted runner with the labels `self-hosted`, `Windows`, `X64`, and `local-k8s`.
+
+Before enabling the job, an administrator must securely provision the `infrawatch` namespace and these existing Kubernetes Secrets in the intended Minikube cluster:
+
+- `infrawatch-secrets`, type `Opaque`, with nonempty `POSTGRES_PASSWORD` and `DATABASE_URL` keys. The URL must use the same credential and the configured PostgreSQL database/user, with appropriate URL encoding.
+- `dockerhub-pull-secret`, type `kubernetes.io/dockerconfigjson`, with valid pull credentials for the published images.
+
+Provision these through an approved secret-management process, not committed manifests, workflow literals, command-line password arguments, or CI artifacts. The workflow does not create, replace, or rotate either Secret. It checks their required structure without printing values and fails before Kubernetes mutations if they are missing, incomplete, or unreadable. These checks do not establish password strength, database authentication, or registry authentication.
+
+The runner's `$HOME/.kube/config` must contain a trusted `minikube` context. The job verifies that context and cluster access, then explicitly supplies the same kubeconfig and context to every `kubectl` operation and to Terraform. It does not change the runner's current context or use an inherited `KUBECONFIG` override. The runner identity needs permission to read the two Secrets as well as the existing deployment permissions; keep access to this runner and its kubeconfig restricted to trusted maintainers.
+
+For an initialized database, the configured credential must already match the existing PostgreSQL role. Updating a Kubernetes Secret or restarting PostgreSQL does not rotate the password stored in persistent database data. Any required rotation is a separate, coordinated administrative operation; do not delete or recreate database storage to satisfy this workflow's checks.
+
 ## Limitations
 
 ClueStack is a developer preview. Current limitations include:

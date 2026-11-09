@@ -291,7 +291,6 @@ jobs:
     if: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && vars.INFRAWATCH_DEPLOY_TARGET == 'local-minikube' }}
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
     steps:
       - name: Checkout source
@@ -308,29 +307,109 @@ jobs:
           "BACKEND_IMAGE=$cleanUsername/infrawatch-backend" | Out-File -FilePath $env:GITHUB_ENV -Append
           "FRONTEND_IMAGE=$cleanUsername/infrawatch-frontend" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-      - name: Verify local Kubernetes access
+      - name: Verify Minikube context
         shell: powershell
         run: |
-          kubectl config current-context
-          kubectl get nodes
+          # Pin both tools to this file; never change the runner's current context.
+          try {
+            $context = kubectl --context=minikube --kubeconfig "$HOME/.kube/config" config view --minify -o 'jsonpath={.contexts[0].name}' 2>$null
+            if ($LASTEXITCODE -ne 0 -or $context -cne 'minikube') {
+              throw "Context verification failed."
+            }
+            kubectl --context=minikube --kubeconfig "$HOME/.kube/config" --request-timeout=10s get nodes -o name > $null 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              throw "Cluster access verification failed."
+            }
+          } catch {
+            throw "Cannot verify the minikube context in the runner's default kubeconfig. No deployment was attempted."
+          }
+
+      - name: Require existing deployment secrets
+        shell: powershell
+        run: |
+          # Print only fixed validation markers, never Secret data. Provision/rotate
+          # credentials outside CI; changing a Secret does not rotate a database role.
+          try {
+            $databaseSecret = kubectl --context=minikube --kubeconfig "$HOME/.kube/config" --request-timeout=10s get secret infrawatch-secrets --namespace infrawatch -o 'go-template={{.type}}:{{if and .data.POSTGRES_PASSWORD .data.DATABASE_URL}}ready{{end}}' 2>$null
+            if ($LASTEXITCODE -ne 0 -or $databaseSecret -cne 'Opaque:ready') {
+              throw "Database credential check failed."
+            }
+            $registrySecret = kubectl --context=minikube --kubeconfig "$HOME/.kube/config" --request-timeout=10s get secret dockerhub-pull-secret --namespace infrawatch -o 'go-template={{.type}}:{{if .data}}ready{{end}}' 2>$null
+            if ($LASTEXITCODE -ne 0 -or $registrySecret -cne 'kubernetes.io/dockerconfigjson:ready') {
+              throw "Registry credential check failed."
+            }
+          } catch {
+            throw "Required deployment Secrets are missing, incomplete, or unreadable. See README CI/CD notes. No deployment was attempted."
+          }
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          # State inspection is captured in memory, never exported as step output.
+          terraform_wrapper: false
 
       - name: Apply Terraform local foundation
         shell: powershell
         run: |
           terraform -chdir=terraform init
+          if ($LASTEXITCODE -ne 0) { throw "Terraform initialization failed." }
+          try {
+            # Reads the selected workspace/backend; no refresh or state mutation.
+            $stateJson = terraform -chdir=terraform show -json 2>$null
+            if ($LASTEXITCODE -ne 0) { throw "State inspection failed." }
+            $state = ($stateJson -join "`n") | ConvertFrom-Json -ErrorAction Stop
+            if ($state -isnot [System.Management.Automation.PSCustomObject] -or $state.format_version -cne '1.0') {
+              throw "Unsupported state output."
+            }
+            $managedResources = [System.Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+            # An empty/new state has format_version but no values. Current
+            # foundation addresses are all root-module resources.
+            if ($null -ne $state.values) {
+              if ($state.values.root_module -isnot [System.Management.Automation.PSCustomObject]) {
+                throw "Invalid state output."
+              }
+              foreach ($resource in $state.values.root_module.resources) {
+                if ($resource.mode -ceq 'managed') {
+                  if ([string]::IsNullOrWhiteSpace($resource.address) -or [string]::IsNullOrWhiteSpace($resource.values.id)) {
+                    throw "Invalid managed resource."
+                  }
+                  $managedResources[$resource.address] = $resource.values.id
+                }
+              }
+            }
+          } catch {
+            throw "Cannot inspect Terraform state safely. Apply was not attempted."
+          } finally {
+            $stateJson = $null
+            $state = $null
+          }
           function Import-IfExists {
             param(
               [string]$Address,
               [string]$ImportId,
               [string[]]$KubectlArguments
             )
-            kubectl @KubectlArguments > $null 2>&1
-            if ($LASTEXITCODE -eq 0) {
-              terraform -chdir=terraform import "-var=kube_context=minikube" $Address $ImportId
+            if ($managedResources.ContainsKey($Address)) {
+              if ($managedResources[$Address] -cne $ImportId) {
+                throw "Terraform state identity mismatch for $Address. Apply was not attempted."
+              }
+              return
             }
+            try {
+              # The client classifies API NotFound; never parse human-readable errors.
+              $resourceName = kubectl --context=minikube --kubeconfig "$HOME/.kube/config" --request-timeout=10s @KubectlArguments --ignore-not-found -o name 2>$null
+              if ($LASTEXITCODE -ne 0) { throw "Resource lookup failed." }
+            } catch {
+              throw "Kubernetes lookup failed for $Address. Apply was not attempted."
+            }
+            if ([string]::IsNullOrWhiteSpace(($resourceName -join "`n"))) { return }
+            try {
+              terraform -chdir=terraform import "-var=kube_context=minikube" "-var=kubeconfig_path=$HOME/.kube/config" $Address $ImportId > $null 2>&1
+              if ($LASTEXITCODE -ne 0) { throw "Import failed." }
+            } catch {
+              throw "Terraform import failed for $Address. Apply was not attempted."
+            }
+            $managedResources[$Address] = $ImportId
           }
           Import-IfExists "kubernetes_namespace_v1.infrawatch" "infrawatch" @("get", "namespace", "infrawatch")
           Import-IfExists "kubernetes_service_account_v1.backend" "infrawatch/infrawatch-backend" @("get", "serviceaccount", "infrawatch-backend", "--namespace", "infrawatch")
@@ -340,51 +419,44 @@ jobs:
           Import-IfExists "kubernetes_role_binding_v1.deployer" "infrawatch/infrawatch-deployer" @("get", "rolebinding", "infrawatch-deployer", "--namespace", "infrawatch")
           Import-IfExists "kubernetes_resource_quota_v1.infrawatch" "infrawatch/infrawatch-quota" @("get", "resourcequota", "infrawatch-quota", "--namespace", "infrawatch")
           Import-IfExists "kubernetes_config_map_v1.backend_config" "infrawatch/infrawatch-backend-config" @("get", "configmap", "infrawatch-backend-config", "--namespace", "infrawatch")
-          terraform -chdir=terraform apply -auto-approve "-var=kube_context=minikube"
-
-      - name: Prepare database secret and DockerHub pull secret
-        shell: powershell
-        run: |
-          $postgresPassword = "infrawatch-local-ci"
-          $databaseUrl = "postgresql://infrawatch:$postgresPassword@infrawatch-postgres:5432/infrawatch"
-          kubectl create secret generic infrawatch-secrets `
-            --namespace infrawatch `
-            --from-literal=POSTGRES_PASSWORD=$postgresPassword `
-            --from-literal=DATABASE_URL=$databaseUrl `
-            --dry-run=client `
-            -o yaml | kubectl apply -f -
-
-          kubectl create secret docker-registry dockerhub-pull-secret `
-            --namespace infrawatch `
-            --docker-server=https://index.docker.io/v1/ `
-            --docker-username=$env:DOCKERHUB_USERNAME_CLEAN `
-            --docker-password=$env:DOCKERHUB_TOKEN `
-            --dry-run=client `
-            -o yaml | kubectl apply -f -
+          terraform -chdir=terraform apply -auto-approve "-var=kube_context=minikube" "-var=kubeconfig_path=$HOME/.kube/config"
+          if ($LASTEXITCODE -ne 0) { throw "Terraform foundation apply failed." }
 
       - name: Apply Kubernetes manifests
         shell: powershell
-        run: kubectl apply -k k8s
+        run: |
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" apply -k k8s
+          if ($LASTEXITCODE -ne 0) { throw "Kubernetes manifest apply failed." }
 
       - name: Configure DockerHub pull secret on workloads
         shell: powershell
         run: |
-          kubectl patch serviceaccount default --namespace infrawatch --type merge --patch '{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}'
-          kubectl patch serviceaccount infrawatch-backend --namespace infrawatch --type merge --patch '{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}'
-          kubectl patch deployment infrawatch-backend --namespace infrawatch --type merge --patch '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}}}}'
-          kubectl patch deployment infrawatch-frontend --namespace infrawatch --type merge --patch '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}}}}'
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" patch serviceaccount default --namespace infrawatch --type merge --patch '{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}'
+          if ($LASTEXITCODE -ne 0) { throw "Default ServiceAccount configuration failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" patch serviceaccount infrawatch-backend --namespace infrawatch --type merge --patch '{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}'
+          if ($LASTEXITCODE -ne 0) { throw "Backend ServiceAccount configuration failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" patch deployment infrawatch-backend --namespace infrawatch --type merge --patch '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}}}}'
+          if ($LASTEXITCODE -ne 0) { throw "Backend pull-secret configuration failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" patch deployment infrawatch-frontend --namespace infrawatch --type merge --patch '{"spec":{"template":{"spec":{"imagePullSecrets":[{"name":"dockerhub-pull-secret"}]}}}}'
+          if ($LASTEXITCODE -ne 0) { throw "Frontend pull-secret configuration failed." }
 
       - name: Roll out published DockerHub images
         shell: powershell
         run: |
-          kubectl set image deployment/infrawatch-backend backend="$env:BACKEND_IMAGE:$env:GITHUB_SHA" --namespace infrawatch
-          kubectl set image deployment/infrawatch-frontend frontend="$env:FRONTEND_IMAGE:$env:GITHUB_SHA" --namespace infrawatch
-          kubectl rollout status statefulset/infrawatch-postgres --namespace infrawatch --timeout=180s
-          kubectl rollout status deployment/infrawatch-backend --namespace infrawatch --timeout=180s
-          kubectl rollout status deployment/infrawatch-frontend --namespace infrawatch --timeout=180s
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" set image deployment/infrawatch-backend backend="$env:BACKEND_IMAGE:$env:GITHUB_SHA" --namespace infrawatch
+          if ($LASTEXITCODE -ne 0) { throw "Backend image update failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" set image deployment/infrawatch-frontend frontend="$env:FRONTEND_IMAGE:$env:GITHUB_SHA" --namespace infrawatch
+          if ($LASTEXITCODE -ne 0) { throw "Frontend image update failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" rollout status statefulset/infrawatch-postgres --namespace infrawatch --timeout=180s
+          if ($LASTEXITCODE -ne 0) { throw "PostgreSQL rollout check failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" rollout status deployment/infrawatch-backend --namespace infrawatch --timeout=180s
+          if ($LASTEXITCODE -ne 0) { throw "Backend rollout check failed." }
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" rollout status deployment/infrawatch-frontend --namespace infrawatch --timeout=180s
+          if ($LASTEXITCODE -ne 0) { throw "Frontend rollout check failed." }
 
       - name: Show local service URLs
         shell: powershell
         run: |
-          kubectl get pods,svc --namespace infrawatch
-          minikube service infrawatch-frontend --namespace infrawatch --url
+          kubectl --context=minikube --kubeconfig "$HOME/.kube/config" get pods,svc --namespace infrawatch
+          if ($LASTEXITCODE -ne 0) { throw "Workload listing failed." }
+          minikube --profile=minikube service infrawatch-frontend --namespace infrawatch --url
